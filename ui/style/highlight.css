@@ -12,10 +12,13 @@
 }
 
 .highlighted {
-  background-color: var(--vscode-editor-findMatchHighlightBackground) !important;
+  background-color: var(
+    --vscode-editor-lineHighlightBackground,
+    var(--vscode-editor-rangeHighlightBackground, var(--vscode-editor-findMatchHighlightBackground))
+  ) !important;
+  /* The negative margin offsets the border, so the code is not shifted and empty lines still show it */
   border-left: 2px solid var(--focus-border);
-  padding-left: 0.5em;
-  margin-left: 0;
+  margin-left: -2px;
 }
 
 .shiki .line[data-line] {
@@ -98,11 +101,11 @@
   max-width: 100%;
   padding: 12px;
 
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.4));
   border-radius: 6px;
 
   font-size: 0.85rem;
-  color: #ddd;
+  color: var(--vscode-foreground, #ddd);
 
   overflow: auto;
 }
@@ -135,6 +138,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 3px;
+}
+
+/* Secondary part of a list row (directory, container), kept readable on the selected row */
+.sk-muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Mixes the color instead of using opacity, so highlighted matches inside stay at full strength */
+.option-item.selected .sk-muted {
+  color: color-mix(in srgb, currentColor 75%, transparent);
 }
 
 .symbol-entry {
@@ -281,31 +294,31 @@
 
 /* make */
 .sk-source-make {
-  color: #6e6e6e;
+  color: var(--vscode-descriptionForeground, #6e6e6e);
   /* tool / build neutral */
 }
 
 /* shell */
 .sk-source-shell {
-  color: #4caf50;
+  color: var(--vscode-terminal-ansiGreen, #4caf50);
   /* terminal green */
 }
 
 /* process */
 .sk-source-process {
-  color: #ff9800;
+  color: var(--vscode-terminal-ansiYellow, #ff9800);
   /* execution orange */
 }
 
 /* workspace */
 .sk-source-workspace {
-  color: #9c27b0;
+  color: var(--vscode-terminal-ansiMagenta, #9c27b0);
   /* config / environment purple */
 }
 
 /* default / unknown */
 .sk-source-default {
-  color: #b0b0b0;
+  color: var(--vscode-descriptionForeground, #b0b0b0);
   /* neutral gray */
 }
 
@@ -332,11 +345,11 @@
 /* BREAKPOINT STYLES */
 
 .sk-breakpoint-active {
-  color: #e51400;
+  color: var(--vscode-debugIcon-breakpointForeground, #e51400);
 }
 
 .sk-breakpoint-disabled {
-  color: #848484;
+  color: var(--vscode-debugIcon-breakpointDisabledForeground, #848484);
 }
 
 .sk-bp-row--disabled {
@@ -355,18 +368,19 @@
   font-size: 0.75em;
   font-weight: 600;
   line-height: 1.6;
+  color: var(--vscode-editor-background, #fff);
 }
 
 .sk-bp-badge--condition {
-  background: #0e639c;
+  background: var(--vscode-terminal-ansiBlue, #0e639c);
 }
 
 .sk-bp-badge--hit {
-  background: #8f4e00;
+  background: var(--vscode-terminal-ansiYellow, #8f4e00);
 }
 
 .sk-bp-badge--log {
-  background: #1a7f37;
+  background: var(--vscode-terminal-ansiGreen, #1a7f37);
 }
 
 /* THEME STYLES */

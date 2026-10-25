@@ -1,6 +1,7 @@
 import { IFuzzyFinderDataAdapter } from "../../../../shared/abstractions/fuzzy-finder-data-adapter";
 import { DataAdapterType } from "../../../../shared/adapters-namespace";
 import { GitDiffInfo } from "../../../../shared/exchange/git-diff";
+import { muteDirectoryHtml, splitHighlightedHtml } from "../../../utils/html";
 import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.decorator";
 
 @FuzzyFinderDataAdapter({
@@ -47,7 +48,9 @@ export class GitDiffFinderDataAdapter implements IFuzzyFinderDataAdapter<GitDiff
   }
 
   private getDisplayPath(option: GitDiffInfo, highlightedContent: string): string {
+    // Kind and status are rendered separately, so drop them (and any highlight inside them) from the path
     const prefix = `${option.kind} ${option.status} `;
-    return highlightedContent.startsWith(prefix) ? highlightedContent.slice(prefix.length) : highlightedContent;
+    const [, pathHtml] = splitHighlightedHtml(highlightedContent, prefix.length);
+    return muteDirectoryHtml(option.relativePath, pathHtml);
   }
 }

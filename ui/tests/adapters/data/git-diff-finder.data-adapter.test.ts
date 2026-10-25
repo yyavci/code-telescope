@@ -31,7 +31,7 @@ describe("GitDiffFinderDataAdapter", () => {
     const html = adapter.getHtmlWrapper(diff, "unstaged M src/app.ts");
 
     expect(html).toContain('<span class="sk-git-diff-status sk-git-diff-status--modified">M</span>');
-    expect(html).toContain('<span class="file-path">src/app.ts</span>');
+    expect(html).toContain('<span class="file-path"><span class="sk-muted">src/</span>app.ts</span>');
     expect(html).toContain('<span class="sk-repo-tag">workspace</span>');
   });
 
@@ -39,7 +39,13 @@ describe("GitDiffFinderDataAdapter", () => {
     const html = adapter.getHtmlWrapper({ ...diff, kind: "untracked", status: "??" }, "untracked ?? src/new.ts");
 
     expect(html).toContain("sk-git-diff-status sk-git-diff-status--added");
-    expect(html).toContain('<span class="file-path">src/new.ts</span>');
+    expect(html).toContain('<span class="file-path"><span class="sk-muted">src/</span>new.ts</span>');
+  });
+
+  it("drops a highlighted kind/status prefix from the path", () => {
+    const html = adapter.getHtmlWrapper(diff, 'u<span class="highlight">n</span>staged M src/app.ts');
+
+    expect(html).toContain('<span class="file-path"><span class="sk-muted">src/</span>app.ts</span>');
   });
 
   it("shows staged as subtle metadata", () => {

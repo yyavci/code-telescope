@@ -45,4 +45,21 @@ describe("WorkspaceTextFinderDataAdapter", () => {
 
     expect(value).toBe("/home/user/project/src/utils/math.ts||3||1");
   });
+
+  it("highlights from the first character of the preview", () => {
+    const option = adapter.parseOptions(data)[0];
+
+    expect(adapter.getSearchText(option)).toBe("index.ts:10 const value = 42;");
+    expect(adapter.calcHlOffsetChars(option)).toBe("index.ts:10 ".length);
+  });
+
+  it("mutes the file:line prefix", () => {
+    const option = adapter.parseOptions(data)[0];
+
+    const html = adapter.getHtmlWrapper(option, "index.ts:10 const value = 42;");
+
+    expect(html).toContain(
+      '<span class="file-path"><span class="sk-muted">index.ts:10 </span>const value = 42;</span>',
+    );
+  });
 });

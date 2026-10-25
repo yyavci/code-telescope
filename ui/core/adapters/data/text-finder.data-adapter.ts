@@ -1,7 +1,7 @@
 import { IFuzzyFinderDataAdapter } from "../../../../shared/abstractions/fuzzy-finder-data-adapter";
 import { DataAdapterType } from "../../../../shared/adapters-namespace";
 import { TextSearchData } from "../../../../shared/exchange/workspace-text-search";
-import { formatFileOptionHtml } from "../../../utils/html";
+import { formatFileOptionHtml, splitHighlightedHtml } from "../../../utils/html";
 import { getSvgIconUrl } from "../../../utils/icon";
 import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.decorator";
 
@@ -29,23 +29,27 @@ export class TextFinderDataAdapter implements IFuzzyFinderDataAdapter<TextSearch
   }
 
   getSearchText(option: SearchOption): string {
-    const fileName = this.getFileName(option.file);
-    return `${fileName}:${option.line} ${option.preview}`;
+    return `${this.getLocationPrefix(option)}${option.preview}`;
   }
 
+  /** Mutes the `file:line` prefix so the matched code stands out. */
   getHtmlWrapper(option: SearchOption, highlightedContent: string): string {
     const svgIconUrl = getSvgIconUrl(option.file);
-    return formatFileOptionHtml(svgIconUrl, highlightedContent);
+    const [prefixHtml, previewHtml] = splitHighlightedHtml(highlightedContent, this.calcHlOffsetChars(option));
+    return formatFileOptionHtml(svgIconUrl, `<span class="sk-muted">${prefixHtml}</span>${previewHtml}`);
   }
 
   getSelectionValue(option: SearchOption): string {
     return option.identifier;
   }
 
+  /** Highlights only the preview, the query was searched in the file content and not in its name. */
   calcHlOffsetChars(option: SearchOption): number {
-    const fileName = this.getFileName(option.file);
-    const prefix = `${fileName}:${option.line} - `;
-    return prefix.length;
+    return this.getLocationPrefix(option).length;
+  }
+
+  private getLocationPrefix(option: SearchOption): string {
+    return `${this.getFileName(option.file)}:${option.line} `;
   }
 
   private getFileName(path: string): string {

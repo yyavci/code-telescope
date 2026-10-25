@@ -1,7 +1,7 @@
 import { IFuzzyFinderDataAdapter } from "../../../../shared/abstractions/fuzzy-finder-data-adapter";
 import { DataAdapterType } from "../../../../shared/adapters-namespace";
 import { FileFinderData } from "../../../../shared/exchange/file-search";
-import { formatFileOptionHtml } from "../../../utils/html";
+import { formatFileOptionHtml, muteDirectoryHtml } from "../../../utils/html";
 import { getSvgIconUrl } from "../../../utils/icon";
 import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.decorator";
 
@@ -36,7 +36,7 @@ export class WorkspaceFilesFinderDataAdapter implements IFuzzyFinderDataAdapter<
 
   getHtmlWrapper(option: FileOption, highlightedContent: string): string {
     const svgIconUrl = getSvgIconUrl(option.relative);
-    return formatFileOptionHtml(svgIconUrl, highlightedContent);
+    return formatFileOptionHtml(svgIconUrl, muteDirectoryHtml(option.relative, highlightedContent));
   }
 
   getSelectionValue(option: FileOption): string {
