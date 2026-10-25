@@ -139,6 +139,18 @@ export interface ActiveThemeChangedMessage {
   type: "activeThemeChanged";
 }
 
+/**
+ * Message sent from the backend when options start or stop loading.
+ * `id` pairs the start and end of one load: the dynamic search request id for `search`,
+ * a per-page-load id for `initial` (the panel can be reloaded with another finder mid-load).
+ */
+export interface LoadingStateMessage {
+  type: "loadingState";
+  loading: boolean;
+  scope: "initial" | "search";
+  id: string;
+}
+
 export interface PostHandleListMessage {
   type: "postHandleListMessage";
 }
@@ -263,7 +275,8 @@ export type ToWebviewKindMessage =
   | PromiseBridgeResponse
   | GrammarChunkMessage
   | GrammarCompleteMessage
-  | ActiveThemeChangedMessage;
+  | ActiveThemeChangedMessage
+  | LoadingStateMessage;
 
 /**
  * Represents all messages that **the webview sends to the backend**.

@@ -6,6 +6,7 @@ import { ChunkStreamer } from "../../chunk-streamer";
 import { WebviewMessageHandler } from "../../decorators/webview-message-handler.decorator";
 import { DynamicSearchState } from "../dynamic-search-state";
 import { FuzzyFinderPanelController } from "../fuzzy-panel.controller";
+import { sendLoadingState } from "../loading-state";
 import { WebviewController } from "../webview.controller";
 
 const SEARCH_DEBOUNCE_MS = 50;
@@ -43,6 +44,7 @@ export class DynamicSearchHandler implements IWebviewMessageHandler<"dynamicSear
     const abortController = DynamicSearchState.start(requestId);
     if (!(await waitForDebounce(abortController.signal))) return;
 
+    await sendLoadingState(wv, true, "search", requestId);
     try {
       if (isChunkableProvider(provider) && typeof (provider as any).searchOnDynamicModeStream === "function") {
         const gen = await (provider as any).searchOnDynamicModeStream(
@@ -114,6 +116,7 @@ export class DynamicSearchHandler implements IWebviewMessageHandler<"dynamicSear
       });
     } finally {
       DynamicSearchState.finish(requestId, abortController);
+      await sendLoadingState(wv, false, "search", requestId);
     }
   }
 }

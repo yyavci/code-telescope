@@ -1,6 +1,7 @@
 import { IFuzzyFinderDataAdapter } from "../../../../shared/abstractions/fuzzy-finder-data-adapter";
 import { DataAdapterType } from "../../../../shared/adapters-namespace";
 import { ReferenceFinderData, ReferenceInfo } from "../../../../shared/exchange/lsp-refs";
+import { splitHighlightedHtml } from "../../../utils/html";
 import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.decorator";
 
 export interface ReferenceOption {
@@ -28,16 +29,23 @@ export class ReferencesFinderDataAdapter implements IFuzzyFinderDataAdapter<Refe
     return `${option.ref.relativePath} ${option.ref.preview.trim()}`;
   }
 
+  getGlobPath(option: ReferenceOption): string {
+    return option.ref.relativePath;
+  }
+
+  /** Mutes the path so the referencing code stands out. */
   getHtmlWrapper(option: ReferenceOption, highlightedContent: string): string {
+    const [pathHtml, previewHtml] = splitHighlightedHtml(highlightedContent, option.ref.relativePath.length);
     const lineTag = `<span class="sk-line-number">:${option.ref.line}</span>`;
     return `
       <i class="codicon codicon-references file-icon"></i>
-      <span class="file-path">${highlightedContent}</span>
+      <span class="file-path"><span class="sk-muted">${pathHtml}</span>${previewHtml}</span>
       ${lineTag}
     `;
   }
 
+  /** The backend index, since `option.index` restarts at 0 in every streamed chunk. */
   getSelectionValue(option: ReferenceOption): string {
-    return option.index.toString();
+    return option.ref.index.toString();
   }
 }

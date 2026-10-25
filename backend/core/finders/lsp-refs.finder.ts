@@ -64,12 +64,15 @@ export class ReferencesFinder implements FuzzyFinderProvider, ChunkableProvider<
     }
 
     const content = await FileReader.read(selected.uri.fsPath);
+    const { start, end } = selected.range;
     return {
       content: content as string,
       kind: "text",
       metadata: {
         filePath: selected.uri.fsPath,
         highlightLine: selected.line - 1,
+        // A multi-line reference range cannot be marked on a single line
+        highlightRange: start.line === end.line ? { start: start.character, end: end.character } : undefined,
       },
     };
   }
@@ -97,7 +100,7 @@ export class ReferencesFinder implements FuzzyFinderProvider, ChunkableProvider<
       }
 
       const refs = await Promise.all(
-        locations.map(async (loc, index) => {
+        locations.map(async (loc) => {
           const relativePath = vscode.workspace.asRelativePath(loc.uri);
           const line = loc.range.start.line + 1;
 
@@ -108,7 +111,7 @@ export class ReferencesFinder implements FuzzyFinderProvider, ChunkableProvider<
           } catch {}
 
           return {
-            index,
+            index: 0,
             uri: loc.uri,
             range: loc.range,
             relativePath,
@@ -119,10 +122,15 @@ export class ReferencesFinder implements FuzzyFinderProvider, ChunkableProvider<
         }),
       );
 
-      return refs.sort((a, b) => {
+      refs.sort((a, b) => {
         const pathCmp = a.relativePath.localeCompare(b.relativePath);
         return pathCmp !== 0 ? pathCmp : a.line - b.line;
       });
+      // Assigned after sorting so the index matches the position in cachedRefs across all chunks
+      refs.forEach((ref, index) => {
+        ref.index = index;
+      });
+      return refs;
     } catch (error) {
       vscode.window.showErrorMessage(`Error fetching references: ${error}`);
       return [];

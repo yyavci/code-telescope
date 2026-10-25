@@ -112,4 +112,44 @@ describe("WebviewDOMReadyHandler", () => {
 
     expect(WebviewController.sendMessage).toHaveBeenCalledWith(mockWebview, expect.objectContaining({ totalLimit: 3 }));
   });
+  it("wraps the initial load in loading state messages", async () => {
+    vi.mocked(isChunkableProvider).mockReturnValue(false);
+    vi.mocked(FuzzyFinderPanelController.instance!.provider.querySelectableOptions).mockResolvedValue([]);
+
+    await handler.handle({ type: "webviewDOMReady" }, mockWebview);
+
+    const sent = vi.mocked(WebviewController.sendMessage).mock.calls.map(([, msg]) => msg as any);
+    expect(sent[0]).toEqual({ type: "loadingState", loading: true, scope: "initial", id: expect.any(String) });
+    expect(sent.at(-1)).toEqual({ type: "loadingState", loading: false, scope: "initial", id: sent[0].id });
+  });
+
+  it("ends the loading state when the query fails", async () => {
+    vi.mocked(isChunkableProvider).mockReturnValue(false);
+    vi.mocked(FuzzyFinderPanelController.instance!.provider.querySelectableOptions).mockRejectedValue(
+      new Error("server crashed"),
+    );
+
+    await expect(handler.handle({ type: "webviewDOMReady" }, mockWebview)).rejects.toThrow("server crashed");
+
+    expect(WebviewController.sendMessage).toHaveBeenLastCalledWith(mockWebview, {
+      type: "loadingState",
+      loading: false,
+      scope: "initial",
+      id: expect.any(String),
+    });
+  });
+  it("gives each page load its own id so a stale load cannot end a newer one", async () => {
+    vi.mocked(isChunkableProvider).mockReturnValue(false);
+    vi.mocked(FuzzyFinderPanelController.instance!.provider.querySelectableOptions).mockResolvedValue([]);
+
+    await handler.handle({ type: "webviewDOMReady" }, mockWebview);
+    await handler.handle({ type: "webviewDOMReady" }, mockWebview);
+
+    const ids = vi
+      .mocked(WebviewController.sendMessage)
+      .mock.calls.map(([, msg]) => msg as any)
+      .filter((msg) => msg.type === "loadingState" && msg.loading)
+      .map((msg) => msg.id);
+    expect(new Set(ids).size).toBe(2);
+  });
 });

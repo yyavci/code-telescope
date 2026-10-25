@@ -5,6 +5,7 @@ import { filtersGlobsLocally, parseProviderInput } from "../../utils/query-globs
 import { isGameActive } from "../game/game-state";
 import { MessageBridge } from "../message-bridge";
 import { FuzzyFinderDataAdapterRegistry } from "../registry/finder-adapter.registry";
+import { LoadingIndicator } from "../render/loading-indicator";
 import { PreviewManager } from "../render/preview-manager";
 import { VimInputHandler } from "../vim";
 import { SessionStateManager } from "./code/state-manager";
@@ -105,6 +106,15 @@ export class WebviewController {
         break;
       }
 
+      case "loadingState": {
+        // A search superseded before its start arrived must not turn the bar back on
+        const isStaleSearchStart = msg.scope === "search" && msg.loading && msg.id !== this.currentRequestId;
+        if (!isStaleSearchStart) {
+          LoadingIndicator.instance.setLoading(msg.loading, msg.scope, msg.id);
+        }
+        break;
+      }
+
       case "fullPreviewUpdate": {
         this.previewQueue = this.previewQueue.then(async () => {
           try {
@@ -197,6 +207,7 @@ export class WebviewController {
       if (!onlyGlobsChanged) {
         WebviewToExtensionMessenger.instance.requestDynamicSearch(query, globs);
         this.currentRequestId = WebviewToExtensionMessenger.instance.lastRequestId;
+        LoadingIndicator.instance.endSearches();
         this.lastDynamicSearchQuery = query;
       }
       OptionListManager.instance.scheduleFilter(rawInput);

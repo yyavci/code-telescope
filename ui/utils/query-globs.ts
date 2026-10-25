@@ -53,6 +53,7 @@ export function parseQueryGlobs(input: string): ParsedQueryGlobs {
 const LOCAL_GLOB_PROVIDERS: readonly FuzzyProviderType[] = [
   "workspace.files",
   "workspace.recentFiles",
+  "workspace.references",
   "workspace.symbols",
   "git.diffs",
 ];

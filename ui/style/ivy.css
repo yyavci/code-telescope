@@ -241,3 +241,43 @@ body {
 #results-label {
   display: none;
 }
+
+/* Progress bar shown while options load. Its negative margins keep the list from moving. */
+#loading-bar {
+  flex-shrink: 0;
+  height: 2px;
+  overflow: hidden;
+  visibility: hidden;
+  position: relative;
+  z-index: 1;
+  margin: 0 0 -2px;
+}
+
+#loading-bar.active {
+  visibility: visible;
+}
+
+#loading-bar.active::before {
+  content: "";
+  display: block;
+  width: 30%;
+  height: 100%;
+  background: var(--vscode-progressBar-background);
+  animation: loading-bar-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-bar-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #loading-bar.active::before {
+    width: 100%;
+    animation: none;
+  }
+}

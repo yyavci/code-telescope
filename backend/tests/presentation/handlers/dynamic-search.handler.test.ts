@@ -87,6 +87,17 @@ describe("DynamicSearchHandler", () => {
     ]);
   });
 
+  it("wraps the search in loading state messages for its request", async () => {
+    const providerMock = FuzzyFinderPanelController.instance!.provider;
+    vi.mocked(providerMock.searchOnDynamicMode!).mockResolvedValue({ results: [], query: "te" });
+
+    await handler.handle({ type: "dynamicSearch", query: "te", requestId: "request-1" } as any, webview);
+
+    const sent = vi.mocked(WebviewController.sendMessage).mock.calls.map(([, msg]) => msg);
+    expect(sent[0]).toEqual({ type: "loadingState", loading: true, scope: "search", id: "request-1" });
+    expect(sent.at(-1)).toEqual({ type: "loadingState", loading: false, scope: "search", id: "request-1" });
+  });
+
   it("should do nothing if provider does not support dynamic search", async () => {
     const providerMock = FuzzyFinderPanelController.instance!.provider;
     providerMock.supportsDynamicSearch = false;

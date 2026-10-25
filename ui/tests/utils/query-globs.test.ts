@@ -82,6 +82,7 @@ describe("parseProviderInput", () => {
   it("parses globs only for the finders that support them", () => {
     expect(parseProviderInput("foo -g *.cs", "workspace.files").globs).toEqual(["*.cs"]);
     expect(parseProviderInput("foo -g *.cs", "workspace.recentFiles").globs).toEqual(["*.cs"]);
+    expect(parseProviderInput("foo -g *.cs", "workspace.references").globs).toEqual(["*.cs"]);
     expect(parseProviderInput("foo -g *.cs", "workspace.text").globs).toEqual(["*.cs"]);
     expect(parseProviderInput("foo -g *.cs", "workspace.symbols").globs).toEqual(["*.cs"]);
     expect(parseProviderInput("foo -g *.cs", "git.diffs").globs).toEqual(["*.cs"]);
@@ -97,6 +98,7 @@ describe("filtersGlobsLocally", () => {
   it("is true for finders that filter in the webview and false for the text finder", () => {
     expect(filtersGlobsLocally("workspace.files")).toBe(true);
     expect(filtersGlobsLocally("workspace.recentFiles")).toBe(true);
+    expect(filtersGlobsLocally("workspace.references")).toBe(true);
     expect(filtersGlobsLocally("workspace.symbols")).toBe(true);
     expect(filtersGlobsLocally("git.diffs")).toBe(true);
     expect(filtersGlobsLocally("workspace.text")).toBe(false);

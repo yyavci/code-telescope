@@ -5,8 +5,11 @@ import { IWebviewMessageHandler } from "../../abstractions/webview-message-handl
 import { ChunkStreamer } from "../../chunk-streamer";
 import { WebviewMessageHandler } from "../../decorators/webview-message-handler.decorator";
 import { FuzzyFinderPanelController } from "../fuzzy-panel.controller";
+import { sendLoadingState } from "../loading-state";
 import { PreviewRequestState } from "../preview-request-state";
 import { WebviewController } from "../webview.controller";
+
+let initialLoadSequence = 0;
 
 @WebviewMessageHandler()
 export class WebviewDOMReadyHandler implements IWebviewMessageHandler<"webviewDOMReady"> {
@@ -14,6 +17,19 @@ export class WebviewDOMReadyHandler implements IWebviewMessageHandler<"webviewDO
 
   async handle(msg: Extract<FromWebviewKindMessage, { type: "webviewDOMReady" }>, wv: vscode.Webview) {
     PreviewRequestState.resetPreviewRequestId();
+
+    const loadId = `initial-${++initialLoadSequence}`;
+    await sendLoadingState(wv, true, "initial", loadId);
+    try {
+      await this.sendInitialOptions(wv);
+    } finally {
+      // Sent even for an empty list or a failed query, which post no option list at all
+      await sendLoadingState(wv, false, "initial", loadId);
+    }
+  }
+
+  /** Resolves once every option has been posted. Webview messages are handled concurrently, so awaiting blocks nothing. */
+  private async sendInitialOptions(wv: vscode.Webview) {
     const provider = FuzzyFinderPanelController.instance!.provider;
 
     if (isChunkableProvider(provider) && typeof (provider as any).queryStream === "function") {
@@ -29,9 +45,11 @@ export class WebviewDOMReadyHandler implements IWebviewMessageHandler<"webviewDO
       const gen = await (provider as any).queryStream();
 
       if (gen && typeof gen[Symbol.asyncIterator] === "function") {
-        streamer.streamFromGenerator(gen).catch((err) => {
+        try {
+          await streamer.streamFromGenerator(gen);
+        } catch (err) {
           console.error("Erro no streaming do gerador:", err);
-        });
+        }
         return;
       }
     }
@@ -49,7 +67,7 @@ export class WebviewDOMReadyHandler implements IWebviewMessageHandler<"webviewDO
         totalLimit,
       });
 
-      streamer.streamConcurrently(provider.concurrency).then(() => {});
+      await streamer.streamConcurrently(provider.concurrency);
       return;
     }
 
