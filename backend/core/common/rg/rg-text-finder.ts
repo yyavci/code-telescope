@@ -28,6 +28,7 @@ export class RipgrepTextFinder {
     query: string,
     customPaths?: string[],
     signal?: AbortSignal,
+    globs?: string[],
   ): AsyncGenerator<TextSearchMatch[]> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) return;
@@ -40,6 +41,7 @@ export class RipgrepTextFinder {
       .query(query)
       .maxColumns(searchCfg.maxColumns)
       .maxFileSize(searchCfg.maxFileSize)
+      .userGlobs(globs ?? [])
       .exclude([...searchCfg.excludePatterns, ...DEFAULT_EXCLUDE_PATTERNS]);
 
     if (searchCfg.fixedStrings) _args.withFixedStrings();

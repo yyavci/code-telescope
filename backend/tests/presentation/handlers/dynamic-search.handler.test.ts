@@ -61,6 +61,32 @@ describe("DynamicSearchHandler", () => {
     });
   });
 
+  it("should forward globs to the streaming search", async () => {
+    const providerMock = FuzzyFinderPanelController.instance!.provider as any;
+    const searchOnDynamicModeStream = vi.fn(async function* () {
+      yield ["match"];
+    });
+    providerMock.chunkSize = 10;
+    providerMock.mapChunk = vi.fn((chunk: any[]) => ({ results: chunk }));
+    providerMock.searchOnDynamicModeStream = searchOnDynamicModeStream;
+
+    try {
+      await handler.handle(
+        { type: "dynamicSearch", query: "te", globs: ["*.cs", "!*Test*.cs"], requestId: "request-1" } as any,
+        webview,
+      );
+    } finally {
+      delete providerMock.chunkSize;
+      delete providerMock.mapChunk;
+      delete providerMock.searchOnDynamicModeStream;
+    }
+
+    expect(searchOnDynamicModeStream).toHaveBeenCalledWith("te", undefined, expect.any(AbortSignal), [
+      "*.cs",
+      "!*Test*.cs",
+    ]);
+  });
+
   it("should do nothing if provider does not support dynamic search", async () => {
     const providerMock = FuzzyFinderPanelController.instance!.provider;
     providerMock.supportsDynamicSearch = false;

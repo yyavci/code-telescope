@@ -44,18 +44,34 @@ export class WorkspaceTextSearchProvider implements FuzzyFinderProvider, Chunkab
   /**
    * Performs a dynamic search as the user types, streaming the results via generator.
    * Prefers ripgrep and falls back to regex search on failure.
+   * The regex fallback cannot apply globs, so it is skipped when globs are set to avoid unfiltered results.
    */
-  async *searchOnDynamicModeStream(query: string, customPaths?: string[], signal?: AbortSignal): AsyncGenerator<any[]> {
+  async *searchOnDynamicModeStream(
+    query: string,
+    customPaths?: string[],
+    signal?: AbortSignal,
+    globs?: string[],
+  ): AsyncGenerator<any[]> {
     if (!query) return;
+
+    const hasGlobs = !!globs && globs.length > 0;
 
     if (this.ripgrepFinder.ripgrepAvailable) {
       try {
-        yield* this.ripgrepFinder.searchStream(query, customPaths, signal);
+        yield* this.ripgrepFinder.searchStream(query, customPaths, signal, globs);
         return;
       } catch (error) {
         if (signal?.aborted) return;
+        if (hasGlobs) {
+          // ripgrep rejects half-typed globs such as `*.{cs`
+          console.error("ripgrep stream failed with globs, skipping regex fallback:", error);
+          return;
+        }
         console.error("ripgrep stream failed, falling back:", error);
       }
+    } else if (hasGlobs) {
+      console.warn("ripgrep is not available, globs require it and the regex fallback is skipped");
+      return;
     }
 
     const result = await this.regexFinder.search(query, signal);

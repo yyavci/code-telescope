@@ -207,6 +207,22 @@ Preview highlighting is powered by Shiki/TextMate grammars. In some languages/th
 | `codeTelescope.wsFileFinder.maxResults` | `2000` | Max results |
 | `codeTelescope.wsFileFinder.textDisplay` | `relative` | `relative`, `absolute`, or `filename-only` |
 
+#### Glob filters in the input
+
+Both finders accept trailing `-g <glob>` pairs in the input (telescope `live_grep_args` style). Prefix a glob with `!` to exclude.
+
+```
+repository -g *.cs                 # search "repository" only in .cs files
+repository -g *.cs -g !*Test*.cs   # ...but skip *Test*.cs
+-g *.{ts,tsx}                      # Files finder: list only .ts/.tsx files
+```
+
+- Only trailing `-g` pairs are parsed. `foo -g *.cs bar` is a plain query, and so is `gcc -g -O2` (a value starting with `-` is never a glob).
+- To search for a literal `-g`, escape it as `\-g`.
+- A glob without `/` matches the file name at any depth, a glob with `/` matches the whole relative path as shown in the finder (in multi-root workspaces it starts with the folder name). Matching is case-insensitive. Supported syntax: `*`, `?`, `**`, `{a,b}`, `[abc]`, `[!abc]` (or `[^abc]`).
+- Globs only narrow the result. They are applied together with the include/exclude settings above, and the exclude settings always win.
+- The Files finder filters its list in the webview, so globs match the relative path shown in the finder.
+
 ### Workspace Text Search
 
 | Setting | Default | Description |
@@ -215,6 +231,10 @@ Preview highlighting is powered by Shiki/TextMate grammars. In some languages/th
 | `codeTelescope.wsTextFinder.maxColumns` | `500` | Max columns per line |
 | `codeTelescope.wsTextFinder.maxFileSize` | `200K` | Max file size |
 | `codeTelescope.wsTextFinder.maxResults` | `10000` | Max results |
+
+#### Glob filters in the input
+
+The input accepts the same trailing `-g <glob>` filters as the Workspace File Finder (`repository -g *.cs -g !*Test*.cs`), passed to ripgrep as `--glob`. Settings excludes always win over them. When globs are present there is no regex fallback (it cannot apply them), so the search returns nothing if ripgrep is unavailable or rejects a half-typed glob such as `*.{cs`. While globs are present, ripgrep also matches the settings excludes case-insensitively (`--glob-case-insensitive`), so they can only exclude more.
 
 ### Keybindings (Panel)
 

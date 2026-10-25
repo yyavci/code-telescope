@@ -45,7 +45,12 @@ export class DynamicSearchHandler implements IWebviewMessageHandler<"dynamicSear
 
     try {
       if (isChunkableProvider(provider) && typeof (provider as any).searchOnDynamicModeStream === "function") {
-        const gen = await (provider as any).searchOnDynamicModeStream(msg.query, undefined, abortController.signal);
+        const gen = await (provider as any).searchOnDynamicModeStream(
+          msg.query,
+          undefined,
+          abortController.signal,
+          msg.globs ?? [],
+        );
         if (gen && typeof gen[Symbol.asyncIterator] === "function") {
           const streamer = new ChunkStreamer<any>(
             [],

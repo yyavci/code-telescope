@@ -210,6 +210,8 @@ export interface PreviewRequestMessage {
 export interface DynamicSearchMessage {
   type: "dynamicSearch";
   query: string;
+  /** Glob filters parsed from the input (`-g` syntax), `!` prefix excludes. */
+  globs?: string[];
   requestId: string;
 }
 

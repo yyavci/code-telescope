@@ -91,13 +91,15 @@ export class WebviewToExtensionMessenger {
    * Triggered whenever the user types into the search input.
    *
    * @param query - The text typed by the user.
+   * @param globs - Glob filters parsed from the input, if any.
    */
-  requestDynamicSearch(query: string): void {
+  requestDynamicSearch(query: string, globs: string[] = []): void {
     const requestId = crypto.randomUUID();
     this._lastRequestId = requestId;
     this.postMessage({
       type: "dynamicSearch",
       query,
+      globs,
       requestId,
     });
   }

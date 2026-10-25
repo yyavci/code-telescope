@@ -1,5 +1,7 @@
+import { FuzzyProviderType } from "../../../shared/adapters-namespace";
 import { OptionListMessage, ToWebviewKindMessage } from "../../../shared/extension-webview-protocol";
 import { HarpoonKeyPlugin } from "../../plugins/harpoon-key.plugin";
+import { parseProviderInput } from "../../utils/query-globs";
 import { isGameActive } from "../game/game-state";
 import { MessageBridge } from "../message-bridge";
 import { FuzzyFinderDataAdapterRegistry } from "../registry/finder-adapter.registry";
@@ -178,12 +180,13 @@ export class WebviewController {
    */
   private setupEventListeners(): void {
     this.searchElement.addEventListener("input", async () => {
-      const query = this.searchElement.value;
-      SessionStateManager.patch({ query });
+      const rawInput = this.searchElement.value;
+      SessionStateManager.patch({ query: rawInput });
 
-      WebviewToExtensionMessenger.instance.requestDynamicSearch(query);
+      const { query, globs } = parseProviderInput(rawInput, __PROVIDER__ as FuzzyProviderType);
+      WebviewToExtensionMessenger.instance.requestDynamicSearch(query, globs);
       this.currentRequestId = WebviewToExtensionMessenger.instance.lastRequestId;
-      OptionListManager.instance.scheduleFilter(query);
+      OptionListManager.instance.scheduleFilter(rawInput);
       OptionListManager.instance.resetIfNeeded();
     });
     this.searchElement.value = __INITIAL_QUERY__;

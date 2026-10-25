@@ -2,6 +2,7 @@ import { IFuzzyFinderDataAdapter } from "../../../shared/abstractions/fuzzy-find
 import { FuzzyProviderType } from "../../../shared/adapters-namespace";
 import { debounce } from "../../utils/debounce";
 import { escapeHtml } from "../../utils/html";
+import { createGlobMatcher, parseProviderInput } from "../../utils/query-globs";
 import { computeMatch, MatchResult } from "../algos/score-engine";
 import { matches } from "../algos/subsequence";
 import { PreviewManager } from "../render/preview-manager";
@@ -20,6 +21,7 @@ export class OptionListManager {
   private static _instance: OptionListManager | undefined;
   private lastOption: any | undefined;
   private lastFilterQuery: string = "";
+  private lastFilterGlobsKey: string = "";
   private pendingFilterTimer: ReturnType<typeof setTimeout> | undefined;
 
   private listElement: HTMLUListElement;
@@ -100,19 +102,38 @@ export class OptionListManager {
     this.dataAdapter = adapter;
   }
 
+  /**
+   * Splits the raw input into the query used for matching/highlighting and the globs used for path filtering.
+   * Only the files finder filters by glob here, the text finder passes them to ripgrep.
+   */
+  private parseInput(rawInput: string): { query: string; globs: string[] } {
+    const { query, globs } = parseProviderInput(rawInput, __PROVIDER__ as FuzzyProviderType);
+    const isFilesFinder = (__PROVIDER__ as FuzzyProviderType) === "workspace.files";
+    return { query, globs: isFilesFinder ? globs : [] };
+  }
+
+  private getCurrentQuery(): string {
+    return this.parseInput(this.searchElement.value).query;
+  }
+
+  private createOptionFilter(query: string, globs: string[]): (option: any) => boolean {
+    const matchesGlobs = createGlobMatcher(globs);
+    return (option) => {
+      const text = this.dataAdapter!.getSearchText(option);
+      return matchesGlobs(text) && matches(query, text);
+    };
+  }
+
   public appendChunk(chunk: any[], totalLimit: number): void {
     const wasEmpty = this.allOptions.length === 0;
     this.allOptions.push(...chunk);
 
-    if (this.searchElement.value === "") {
+    const { query, globs } = this.parseInput(this.searchElement.value);
+    if (query === "" && globs.length === 0) {
       this.filteredOptions = this.allOptions;
     } else {
-      this.resetMatchCacheIfNeeded(this.searchElement.value);
-      const newFiltered = chunk.filter((opt) => {
-        const text = this.dataAdapter!.getSearchText(opt);
-        return matches(this.searchElement.value, text);
-      });
-      this.filteredOptions.push(...newFiltered);
+      this.resetMatchCacheIfNeeded(query);
+      this.filteredOptions.push(...chunk.filter(this.createOptionFilter(query, globs)));
     }
 
     this.updateItemsCount();
@@ -127,24 +148,27 @@ export class OptionListManager {
     this.virtualizer.scrollToSelectedVirtualized(this.selectedIndex);
   }
 
-  public filter(query: string): void {
+  public filter(rawInput: string): void {
     if (!this.dataAdapter) return;
+    const { query, globs } = this.parseInput(rawInput);
+    const globsKey = globs.join("\n");
     this.resetMatchCacheIfNeeded(query);
 
     const lowerQuery = query.toLowerCase();
     const lowerLast = this.lastFilterQuery.toLowerCase();
 
     // if the query is an extension of the previous query,
-    // filter only over the current filtered options, not over all the options
+    // filter only over the current filtered options, not over all the options.
+    // Changing the globs breaks this, e.g. `*.c` -> `*.cs` is not a subset of the previous result.
     const sourceList =
-      lowerQuery.startsWith(lowerLast) && lowerLast.length > 0 ? this.filteredOptions : this.allOptions;
+      lowerQuery.startsWith(lowerLast) && lowerLast.length > 0 && globsKey === this.lastFilterGlobsKey
+        ? this.filteredOptions
+        : this.allOptions;
 
-    this.filteredOptions = sourceList.filter((opt) => {
-      const text = this.dataAdapter!.getSearchText(opt);
-      return matches(query, text);
-    });
+    this.filteredOptions = sourceList.filter(this.createOptionFilter(query, globs));
 
     this.lastFilterQuery = query;
+    this.lastFilterGlobsKey = globsKey;
     this.selectedIndex = this.getRelativeFirstIndex();
 
     this.virtualizer.scrollToSelectedVirtualized(this.selectedIndex);
@@ -164,7 +188,7 @@ export class OptionListManager {
     }
   }
 
-  public scheduleFilter(query: string): void {
+  public scheduleFilter(rawInput: string): void {
     if (this.pendingFilterTimer !== undefined) {
       clearTimeout(this.pendingFilterTimer);
     }
@@ -174,7 +198,7 @@ export class OptionListManager {
     const delay = this.dataAdapter?.debounceSearchTime ?? (this.allOptions.length >= 10_000 ? 16 : 0);
     this.pendingFilterTimer = setTimeout(() => {
       this.pendingFilterTimer = undefined;
-      if (this.searchElement.value === query) this.filter(query);
+      if (this.searchElement.value === rawInput) this.filter(rawInput);
     }, delay);
   }
 
@@ -218,7 +242,8 @@ export class OptionListManager {
 
   public resetIfNeeded() {
     const needReset: FuzzyProviderType[] = ["workspace.text", "currentFile.text"];
-    if (this.searchElement.value === "" && needReset.includes(__PROVIDER__ as FuzzyProviderType)) {
+    // An input made only of globs (`-g *.cs`) has no query to search, so stale results must go as well.
+    if (this.getCurrentQuery() === "" && needReset.includes(__PROVIDER__ as FuzzyProviderType)) {
       this.clearOptions();
       PreviewManager.instance.clearPreview();
     }
@@ -284,7 +309,7 @@ export class OptionListManager {
       renderScheduled = true;
       requestAnimationFrame(() => {
         renderScheduled = false;
-        this.virtualizer.renderVirtualized(this.filteredOptions, this.searchElement.value, (item, idx, q) =>
+        this.virtualizer.renderVirtualized(this.filteredOptions, this.getCurrentQuery(), (item, idx, q) =>
           this.createListItem(item, idx, q),
         );
       });
@@ -387,14 +412,14 @@ export class OptionListManager {
 
     const shouldSort = this.dataAdapter.shouldSort ?? true;
     if (shouldSort) {
-      this.applySortOnOptions(this.filteredOptions, this.searchElement.value);
+      this.applySortOnOptions(this.filteredOptions, this.getCurrentQuery());
     }
     this.selectedIndex = this.getRelativeFirstIndex();
     const afterSort = performance.now();
 
     const itemsCount = this.filteredOptions.length;
 
-    this.virtualizer.renderVirtualized(this.filteredOptions, this.searchElement.value, (item, idx, q) =>
+    this.virtualizer.renderVirtualized(this.filteredOptions, this.getCurrentQuery(), (item, idx, q) =>
       this.createListItem(item, idx, q),
     );
 

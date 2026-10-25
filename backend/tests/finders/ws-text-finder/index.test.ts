@@ -24,6 +24,7 @@ vi.mock("@backend/core/common/rg/rg-text-finder", () => {
     class MockClass {
       ripgrepAvailable = true;
       search = vi.fn();
+      searchStream = vi.fn();
     },
   );
   return { RipgrepTextFinder };
@@ -64,6 +65,76 @@ describe("WorkspaceTextSearchProvider", () => {
 
     expect(regexInstance.search).toHaveBeenCalledWith("test");
     expect(result.results).toEqual(["fallback"]);
+  });
+
+  describe("searchOnDynamicModeStream", () => {
+    async function collect(stream: AsyncGenerator<any[]>) {
+      const chunks: any[][] = [];
+      for await (const chunk of stream) chunks.push(chunk);
+      return chunks;
+    }
+
+    async function* failingStream(): AsyncGenerator<any[]> {
+      throw new Error("error parsing glob '*.{cs'");
+    }
+
+    it("forwards globs to ripgrep", async () => {
+      const rgInstance = vi.mocked(RipgrepTextFinder).mock.results[0].value as Mocked<RipgrepTextFinder>;
+      rgInstance.searchStream.mockImplementation(async function* () {
+        yield ["match"] as any;
+      });
+      const signal = new AbortController().signal;
+
+      const chunks = await collect(provider.searchOnDynamicModeStream("test", undefined, signal, ["*.cs"]));
+
+      expect(rgInstance.searchStream).toHaveBeenCalledWith("test", undefined, signal, ["*.cs"]);
+      expect(chunks).toEqual([["match"]]);
+    });
+
+    it("falls back to regex finder when ripgrep fails without globs", async () => {
+      const rgInstance = vi.mocked(RipgrepTextFinder).mock.results[0].value as Mocked<RipgrepTextFinder>;
+      const regexInstance = vi.mocked(RegexFinder).mock.results[0].value as Mocked<RegexFinder>;
+      rgInstance.searchStream.mockImplementation(failingStream);
+      regexInstance.search.mockResolvedValueOnce({ results: ["fallback"] });
+
+      const chunks = await collect(provider.searchOnDynamicModeStream("test"));
+
+      expect(chunks).toEqual([["fallback"]]);
+    });
+
+    it("does not fall back to regex finder when ripgrep fails with globs", async () => {
+      const rgInstance = vi.mocked(RipgrepTextFinder).mock.results[0].value as Mocked<RipgrepTextFinder>;
+      const regexInstance = vi.mocked(RegexFinder).mock.results[0].value as Mocked<RegexFinder>;
+      rgInstance.searchStream.mockImplementation(failingStream);
+
+      const chunks = await collect(provider.searchOnDynamicModeStream("test", undefined, undefined, ["*.{cs"]));
+
+      expect(chunks).toEqual([]);
+      expect(regexInstance.search).not.toHaveBeenCalled();
+    });
+
+    it("does not fall back to regex finder when ripgrep is unavailable and globs are set", async () => {
+      const rgInstance = vi.mocked(RipgrepTextFinder).mock.results[0].value as Mocked<RipgrepTextFinder>;
+      const regexInstance = vi.mocked(RegexFinder).mock.results[0].value as Mocked<RegexFinder>;
+      (rgInstance as any).ripgrepAvailable = false;
+
+      const chunks = await collect(provider.searchOnDynamicModeStream("test", undefined, undefined, ["*.cs"]));
+
+      expect(chunks).toEqual([]);
+      expect(rgInstance.searchStream).not.toHaveBeenCalled();
+      expect(regexInstance.search).not.toHaveBeenCalled();
+    });
+
+    it("uses the regex finder when ripgrep is unavailable and there are no globs", async () => {
+      const rgInstance = vi.mocked(RipgrepTextFinder).mock.results[0].value as Mocked<RipgrepTextFinder>;
+      const regexInstance = vi.mocked(RegexFinder).mock.results[0].value as Mocked<RegexFinder>;
+      (rgInstance as any).ripgrepAvailable = false;
+      regexInstance.search.mockResolvedValueOnce({ results: ["fallback"] });
+
+      const chunks = await collect(provider.searchOnDynamicModeStream("test"));
+
+      expect(chunks).toEqual([["fallback"]]);
+    });
   });
 
   it("opens file and reveals position on select", async () => {
