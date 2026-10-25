@@ -15,6 +15,7 @@ interface WorkspaceSymbolData {
   containerName: string;
   location: vscode.Location;
   uri: vscode.Uri;
+  relativePath: string;
   identifier: string;
 }
 
@@ -116,9 +117,8 @@ export class WorkspaceSymbolsFinder implements FuzzyFinderProvider {
     const displayTexts = symbols.map((symbol) => {
       const symbolName = symbol.name.padEnd(40);
       const container = symbol.containerName ? ` [${symbol.containerName}]` : "";
-      const filePath = vscode.workspace.asRelativePath(symbol.uri);
 
-      return `${symbolName} -> ${filePath}${container}`;
+      return `${symbolName} -> ${symbol.relativePath}${container}`;
     });
 
     return {
@@ -146,6 +146,7 @@ export class WorkspaceSymbolsFinder implements FuzzyFinderProvider {
         containerName: symbol.containerName,
         location: symbol.location,
         uri: symbol.location.uri,
+        relativePath: vscode.workspace.asRelativePath(symbol.location.uri),
         identifier: WorkspaceSymbolsFinder.buildIdentifier(symbol.location.uri, symbol.location.range.start),
       }));
     } catch (error) {

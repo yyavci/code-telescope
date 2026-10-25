@@ -55,6 +55,12 @@ export interface IFuzzyFinderDataAdapter<TData = any, TOption = string> {
 
   calcHlOffsetChars?(option: TOption): number;
 
+  /**
+   * Path that `-g` globs are matched against. Defaults to the search text,
+   * which is enough when the search text is the path itself.
+   */
+  getGlobPath?(option: TOption): string;
+
   sortFn?(x1: TOption, x2: TOption): number;
 
   htmlWrapperPreset?: HtmlWrapperPreset;

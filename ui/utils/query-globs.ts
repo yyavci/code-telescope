@@ -49,9 +49,17 @@ export function parseQueryGlobs(input: string): ParsedQueryGlobs {
   return { query, globs };
 }
 
+/** Providers that filter their list by glob in the webview, matching the adapter's path. */
+const LOCAL_GLOB_PROVIDERS: readonly FuzzyProviderType[] = ["workspace.files", "workspace.symbols", "git.diffs"];
+
 /** Whether the provider accepts `-g` globs in its input. */
 function supportsQueryGlobs(provider: FuzzyProviderType): boolean {
-  return provider === "workspace.files" || provider === "workspace.text";
+  return provider === "workspace.text" || filtersGlobsLocally(provider);
+}
+
+/** Whether the webview applies the globs itself. The text finder passes them to ripgrep instead. */
+export function filtersGlobsLocally(provider: FuzzyProviderType): boolean {
+  return LOCAL_GLOB_PROVIDERS.includes(provider);
 }
 
 /** Parses the input only for providers that support globs, otherwise returns it as a plain query. */

@@ -23,6 +23,10 @@ describe("GitDiffFinderDataAdapter", () => {
     expect(adapter.getSearchText(diff)).toBe("unstaged M src/app.ts");
   });
 
+  it("matches globs against the relative path", () => {
+    expect(adapter.getGlobPath(diff)).toBe("src/app.ts");
+  });
+
   it("renders diff html wrapper", () => {
     const html = adapter.getHtmlWrapper(diff, "unstaged M src/app.ts");
 

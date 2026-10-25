@@ -14,6 +14,7 @@ describe("SymbolsFinderDataAdapter", () => {
           kindName: "Class",
           codicon: "symbol-class",
           identifier: "file:///workspace/UserService.cs||9||17",
+          relativePath: "src/UserService.cs",
         },
       ],
       displayTexts: ["UserService -> UserService.cs [App.Services]"],
@@ -22,6 +23,7 @@ describe("SymbolsFinderDataAdapter", () => {
     const option = adapter.parseOptions(data)[0];
 
     expect(adapter.getSelectionValue(option)).toBe("file:///workspace/UserService.cs||9||17");
+    expect(adapter.getGlobPath(option)).toBe("src/UserService.cs");
   });
 
   it("falls back to the index for document symbols", () => {

@@ -1,7 +1,7 @@
 import { FuzzyProviderType } from "../../../shared/adapters-namespace";
 import { OptionListMessage, ToWebviewKindMessage } from "../../../shared/extension-webview-protocol";
 import { HarpoonKeyPlugin } from "../../plugins/harpoon-key.plugin";
-import { parseProviderInput } from "../../utils/query-globs";
+import { filtersGlobsLocally, parseProviderInput } from "../../utils/query-globs";
 import { isGameActive } from "../game/game-state";
 import { MessageBridge } from "../message-bridge";
 import { FuzzyFinderDataAdapterRegistry } from "../registry/finder-adapter.registry";
@@ -23,6 +23,7 @@ export class WebviewController {
   private lastSearchQuery: string | undefined;
   private currentRequestId: string | undefined;
   private lastHandledOptionListRequestId: string | undefined;
+  private lastDynamicSearchQuery: string | undefined;
 
   constructor(private readonly keyboardHandler: KeyboardHandler) {
     console.log("[WebviewController] Initializing controller");
@@ -188,9 +189,16 @@ export class WebviewController {
       const rawInput = this.searchElement.value;
       SessionStateManager.patch({ query: rawInput });
 
-      const { query, globs } = parseProviderInput(rawInput, __PROVIDER__ as FuzzyProviderType);
-      WebviewToExtensionMessenger.instance.requestDynamicSearch(query, globs);
-      this.currentRequestId = WebviewToExtensionMessenger.instance.lastRequestId;
+      const provider = __PROVIDER__ as FuzzyProviderType;
+      const { query, globs } = parseProviderInput(rawInput, provider);
+      // Globs of local providers are applied by the filter below, so typing them must not
+      // re-run the same backend search (and reset the list when it returns).
+      const onlyGlobsChanged = filtersGlobsLocally(provider) && query === this.lastDynamicSearchQuery;
+      if (!onlyGlobsChanged) {
+        WebviewToExtensionMessenger.instance.requestDynamicSearch(query, globs);
+        this.currentRequestId = WebviewToExtensionMessenger.instance.lastRequestId;
+        this.lastDynamicSearchQuery = query;
+      }
       OptionListManager.instance.scheduleFilter(rawInput);
       OptionListManager.instance.resetIfNeeded();
     });

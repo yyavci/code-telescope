@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGlobMatcher, parseProviderInput, parseQueryGlobs } from "../../utils/query-globs";
+import { createGlobMatcher, filtersGlobsLocally, parseProviderInput, parseQueryGlobs } from "../../utils/query-globs";
 
 const matchesGlobs = (path: string, globs: string[]) => createGlobMatcher(globs)(path);
 
@@ -79,14 +79,25 @@ describe("parseProviderInput", () => {
     expect(parseProviderInput("foo -g *.cs", "workspace.text")).toEqual({ query: "foo", globs: ["*.cs"] });
   });
 
-  it("parses globs only for the workspace files and text finders", () => {
+  it("parses globs only for the finders that support them", () => {
     expect(parseProviderInput("foo -g *.cs", "workspace.files").globs).toEqual(["*.cs"]);
     expect(parseProviderInput("foo -g *.cs", "workspace.text").globs).toEqual(["*.cs"]);
+    expect(parseProviderInput("foo -g *.cs", "workspace.symbols").globs).toEqual(["*.cs"]);
+    expect(parseProviderInput("foo -g *.cs", "git.diffs").globs).toEqual(["*.cs"]);
     expect(parseProviderInput("foo -g *.cs", "git.branches").globs).toEqual([]);
   });
 
   it("passes the raw input through for unsupported providers", () => {
     expect(parseProviderInput("foo -g *.cs", "currentFile.text")).toEqual({ query: "foo -g *.cs", globs: [] });
+  });
+});
+
+describe("filtersGlobsLocally", () => {
+  it("is true for finders that filter in the webview and false for the text finder", () => {
+    expect(filtersGlobsLocally("workspace.files")).toBe(true);
+    expect(filtersGlobsLocally("workspace.symbols")).toBe(true);
+    expect(filtersGlobsLocally("git.diffs")).toBe(true);
+    expect(filtersGlobsLocally("workspace.text")).toBe(false);
   });
 });
 

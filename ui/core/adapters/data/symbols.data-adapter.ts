@@ -36,6 +36,10 @@ export class SymbolsFinderDataAdapter
     return `${symbol.name} (${symbol.kindName}) ${symbol.containerName || ""}`;
   }
 
+  getGlobPath(option: WorkspaceSymbolOption): string {
+    return option.symbol.relativePath ?? "";
+  }
+
   getHtmlWrapper(option: WorkspaceSymbolOption, highlightedContent: string): string {
     const codicon = option.symbol.codicon;
     return `<i class="codicon codicon-${codicon} file-icon sk-${codicon}"></i><span class="file-path">${highlightedContent}</span>`;

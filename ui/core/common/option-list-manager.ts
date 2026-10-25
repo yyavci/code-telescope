@@ -2,7 +2,7 @@ import { IFuzzyFinderDataAdapter } from "../../../shared/abstractions/fuzzy-find
 import { FuzzyProviderType } from "../../../shared/adapters-namespace";
 import { debounce } from "../../utils/debounce";
 import { escapeHtml } from "../../utils/html";
-import { createGlobMatcher, parseProviderInput } from "../../utils/query-globs";
+import { createGlobMatcher, filtersGlobsLocally, parseProviderInput } from "../../utils/query-globs";
 import { computeMatch, MatchResult } from "../algos/score-engine";
 import { matches } from "../algos/subsequence";
 import { PreviewManager } from "../render/preview-manager";
@@ -104,12 +104,12 @@ export class OptionListManager {
 
   /**
    * Splits the raw input into the query used for matching/highlighting and the globs used for path filtering.
-   * Only the files finder filters by glob here, the text finder passes them to ripgrep.
+   * Globs are only applied here for providers that filter locally, the text finder passes them to ripgrep.
    */
   private parseInput(rawInput: string): { query: string; globs: string[] } {
-    const { query, globs } = parseProviderInput(rawInput, __PROVIDER__ as FuzzyProviderType);
-    const isFilesFinder = (__PROVIDER__ as FuzzyProviderType) === "workspace.files";
-    return { query, globs: isFilesFinder ? globs : [] };
+    const provider = __PROVIDER__ as FuzzyProviderType;
+    const { query, globs } = parseProviderInput(rawInput, provider);
+    return { query, globs: filtersGlobsLocally(provider) ? globs : [] };
   }
 
   private getCurrentQuery(): string {
@@ -120,7 +120,8 @@ export class OptionListManager {
     const matchesGlobs = createGlobMatcher(globs);
     return (option) => {
       const text = this.dataAdapter!.getSearchText(option);
-      return matchesGlobs(text) && matches(query, text);
+      const globPath = this.dataAdapter!.getGlobPath?.(option) ?? text;
+      return matchesGlobs(globPath) && matches(query, text);
     };
   }
 

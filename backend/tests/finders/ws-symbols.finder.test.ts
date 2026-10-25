@@ -66,6 +66,7 @@ describe("WorkspaceSymbolsFinder", () => {
       expect(result.symbols).toHaveLength(1);
       expect(result.symbols[0].identifier).toBe(`${SYMBOL_URI}||9||17`);
       expect(result.symbols[0].kindName).toBe("Class");
+      expect(result.symbols[0].relativePath).toBe(SYMBOL_URI);
       expect(result.displayTexts[0]).toBe(`${"UserService".padEnd(40)} -> ${SYMBOL_URI} [App.Services]`);
     });
 

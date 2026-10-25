@@ -17,6 +17,10 @@ export class GitDiffFinderDataAdapter implements IFuzzyFinderDataAdapter<GitDiff
     return `${option.kind} ${option.status} ${option.relativePath}`;
   }
 
+  getGlobPath(option: GitDiffInfo): string {
+    return option.relativePath;
+  }
+
   getHtmlWrapper(option: GitDiffInfo, highlightedContent: string): string {
     const statusClass = this.getStatusClass(option.status);
     const kindTag = option.kind === "staged" ? `<span class="sk-git-diff-meta">staged</span>` : "";
