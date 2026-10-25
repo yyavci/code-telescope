@@ -147,6 +147,11 @@ export class WebviewController {
     if (msg.requestId && this.currentRequestId && msg.requestId !== this.currentRequestId) {
       return;
     }
+    // The initial list (sent without requestId) can arrive after a dynamic search response
+    // when the provider queries a language server for it; it must not replace newer results.
+    if (!msg.requestId && this.lastHandledOptionListRequestId) {
+      return;
+    }
 
     const { fuzzyProviderType, dataAdapterType, data, totalLimit, query } = msg;
     const adapter = FuzzyFinderDataAdapterRegistry.instance.getAdapter(dataAdapterType);

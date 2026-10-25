@@ -44,6 +44,18 @@ vi.mock("vscode", () => {
         }
       },
     ),
+    Selection: vi.fn(
+      class {
+        constructor(
+          public anchor: any,
+          public active: any,
+        ) {}
+      },
+    ),
+    SymbolKind: {
+      4: "Class",
+      Class: 4,
+    },
     TextEditorRevealType: {
       InCenter: 0,
     },

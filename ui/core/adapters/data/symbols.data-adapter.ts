@@ -42,6 +42,7 @@ export class SymbolsFinderDataAdapter
   }
 
   getSelectionValue(option: WorkspaceSymbolOption): string {
-    return option.index.toString();
+    // Document symbols have no identifier and are still looked up by index
+    return option.symbol.identifier ?? option.index.toString();
   }
 }
