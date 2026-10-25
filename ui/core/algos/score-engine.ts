@@ -34,6 +34,33 @@ function getFilenameStart(text: string): number {
   return Math.max(slash, backslash) + 1;
 }
 
+/** Bonus for each query character matched in the file name, the part users usually search for. Paths only. */
+const FILENAME_CHAR_BONUS = 4;
+/**
+ * Bonus for starting at the exact substring. It must outweigh the file-name-start bonus a scattered
+ * match can collect, or `Re…pository` from `RecommendationRepository` beats the contiguous `Repository`.
+ */
+const EXACT_SUBSTRING_START_BONUS = 40;
+/** Bonus for a substring-mode match inside the file name. */
+const FILENAME_SUBSTRING_BONUS = 20;
+
+/**
+ * Index of the query as an exact substring. For paths it prefers an occurrence in the file name:
+ * the first occurrence alone would give the exact-match bonus to a folder that happens to share
+ * the name (`Repository/RecommendationRepository.cs`), highlighting and ranking it over the file name.
+ * Free text (code previews, `name (container) path`) keeps the first occurrence, as its last `/`
+ * may be in a comment or a division rather than before a file name.
+ */
+function findExactSubstringIdx(
+  lowerText: string,
+  lowerQuery: string,
+  filenameStart: number,
+  searchTextIsPath: boolean,
+): number {
+  const filenameIdx = searchTextIsPath ? lowerText.indexOf(lowerQuery, filenameStart) : -1;
+  return filenameIdx !== -1 ? filenameIdx : lowerText.indexOf(lowerQuery);
+}
+
 type State = { score: number; lastIdx: number; prev: State | null };
 
 export type MatchResult = { score: number; indices: number[] };
@@ -59,6 +86,7 @@ function computeStateScore(
   qi: number,
   filenameStart: number,
   exactSubstringIdx: number,
+  searchTextIsPath: boolean,
 ): number {
   const distance = foundIdx - state.lastIdx;
   let localScore = 0;
@@ -82,7 +110,7 @@ function computeStateScore(
 
   if (exactSubstringIdx !== -1) {
     if (foundIdx === exactSubstringIdx && qi === 0) {
-      localScore += 28;
+      localScore += EXACT_SUBSTRING_START_BONUS;
     }
 
     const exactEnd = exactSubstringIdx + lowerQuery.length;
@@ -91,10 +119,18 @@ function computeStateScore(
     }
   }
 
+  // Only on the exact substring when there is one, so scattered file name characters (`Stat…Us…`)
+  // cannot outscore a contiguous folder match (`Status/`) by collecting the bonus per character
+  const isOnExactSubstring =
+    exactSubstringIdx === -1 || (foundIdx >= exactSubstringIdx && foundIdx < exactSubstringIdx + lowerQuery.length);
+  if (searchTextIsPath && foundIdx >= filenameStart && isOnExactSubstring) {
+    localScore += FILENAME_CHAR_BONUS;
+  }
+
   return state.score + localScore;
 }
 
-function computeBestMatch(lowerQuery: string, text: string): MatchResult {
+function computeBestMatch(lowerQuery: string, text: string, searchTextIsPath: boolean): MatchResult {
   const queryLen = lowerQuery.length;
   const textLen = text.length;
 
@@ -102,7 +138,7 @@ function computeBestMatch(lowerQuery: string, text: string): MatchResult {
 
   const lowerText = text.toLowerCase();
   const filenameStart = getFilenameStart(text);
-  const exactSubstringIdx = lowerText.indexOf(lowerQuery);
+  const exactSubstringIdx = findExactSubstringIdx(lowerText, lowerQuery, filenameStart, searchTextIsPath);
   const initialState: State = { score: 0, lastIdx: -1, prev: null };
   let best: State | null = null;
 
@@ -112,7 +148,16 @@ function computeBestMatch(lowerQuery: string, text: string): MatchResult {
   let startIdx = lowerText.indexOf(lowerQuery[0]);
   while (startIdx !== -1) {
     let state: State = {
-      score: computeStateScore(lowerQuery, text, initialState, startIdx, 0, filenameStart, exactSubstringIdx),
+      score: computeStateScore(
+        lowerQuery,
+        text,
+        initialState,
+        startIdx,
+        0,
+        filenameStart,
+        exactSubstringIdx,
+        searchTextIsPath,
+      ),
       lastIdx: startIdx,
       prev: initialState,
     };
@@ -126,7 +171,16 @@ function computeBestMatch(lowerQuery: string, text: string): MatchResult {
       }
 
       state = {
-        score: computeStateScore(lowerQuery, text, state, foundIdx, qi, filenameStart, exactSubstringIdx),
+        score: computeStateScore(
+          lowerQuery,
+          text,
+          state,
+          foundIdx,
+          qi,
+          filenameStart,
+          exactSubstringIdx,
+          searchTextIsPath,
+        ),
         lastIdx: foundIdx,
         prev: state,
       };
@@ -141,29 +195,37 @@ function computeBestMatch(lowerQuery: string, text: string): MatchResult {
   return best ? { score: best.score, indices: buildIndices(best) } : { score: -Infinity, indices: [] };
 }
 
-function computeSubstringMatch(lowerQuery: string, text: string): MatchResult {
+function computeSubstringMatch(lowerQuery: string, text: string, searchTextIsPath: boolean): MatchResult {
   const lowerText = text.toLowerCase();
-  const idx = lowerText.indexOf(lowerQuery);
+  const filenameStart = getFilenameStart(text);
+  const idx = findExactSubstringIdx(lowerText, lowerQuery, filenameStart, searchTextIsPath);
   if (idx === -1) return { score: -Infinity, indices: [] };
 
   const indices = Array.from({ length: lowerQuery.length }, (_, i) => idx + i);
-  const filenameStart = getFilenameStart(text);
-  let score = -idx;
+  const isInFilename = searchTextIsPath && idx >= filenameStart;
+  // Measured from the file name start for a file name match, so a long directory does not push it down
+  let score = -(isInFilename ? idx - filenameStart : idx);
 
   if (idx === 0) score += 15;
+  if (isInFilename) score += FILENAME_SUBSTRING_BONUS;
   if (idx === filenameStart) score += 40;
   if (isWordBoundary(text, idx)) score += 12;
 
   return { score, indices };
 }
 
-export function computeMatch(lowerQuery: string, text: string): MatchResult {
+/**
+ * @param searchTextIsPath Enables the file name preferences, set by data adapters whose search text is a path.
+ */
+export function computeMatch(lowerQuery: string, text: string, searchTextIsPath = false): MatchResult {
   const algorithm = SessionStateManager.matchingAlgorithm;
-  return algorithm === "subsequence" ? computeBestMatch(lowerQuery, text) : computeSubstringMatch(lowerQuery, text);
+  return algorithm === "subsequence"
+    ? computeBestMatch(lowerQuery, text, searchTextIsPath)
+    : computeSubstringMatch(lowerQuery, text, searchTextIsPath);
 }
 
-export function scoreMatch(lowerQuery: string, text: string): number {
+export function scoreMatch(lowerQuery: string, text: string, searchTextIsPath = false): number {
   if (!lowerQuery) return 0;
   if (!text) return -Infinity;
-  return computeMatch(lowerQuery, text).score;
+  return computeMatch(lowerQuery, text, searchTextIsPath).score;
 }

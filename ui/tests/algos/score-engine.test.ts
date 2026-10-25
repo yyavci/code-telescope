@@ -46,4 +46,52 @@ describe("score-engine", () => {
     expect(result.indices.every((idx, i, arr) => i === 0 || idx > arr[i - 1])).toBe(true);
     expect(result.score).toBeGreaterThan(-Infinity);
   });
+
+  it("highlights the file name when a folder has the same name", () => {
+    vi.spyOn(SessionStateManager, "matchingAlgorithm", "get").mockReturnValue("subsequence");
+
+    const text = "Data/Repository/RecommendationRepository.cs";
+    const result = computeMatch("repository", text, true);
+
+    expect(result.indices[0]).toBe(text.lastIndexOf("Repository"));
+  });
+
+  it("ranks a file name match above a folder-only match", () => {
+    vi.spyOn(SessionStateManager, "matchingAlgorithm", "get").mockReturnValue("subsequence");
+
+    const fileName = scoreMatch("repository", "Sok.Replay/Engine/InMemoryRecommendationRepository.cs", true);
+    const folderOnly = scoreMatch("repository", "Sok.Data/Repository/ISnapshotReader.cs", true);
+
+    expect(fileName).toBeGreaterThan(folderOnly);
+  });
+
+  it("prefers the file name occurrence in substring mode", () => {
+    vi.spyOn(SessionStateManager, "matchingAlgorithm", "get").mockReturnValue("substring");
+
+    const text = "Data/Repository/RecommendationRepository.cs";
+    const result = computeMatch("repository", text, true);
+
+    expect(result.indices[0]).toBe(text.lastIndexOf("Repository"));
+    expect(scoreMatch("repository", "a/very/long/path/to/Engine/UserRepository.cs", true)).toBeGreaterThan(
+      scoreMatch("repository", "Data/Repository/ISnapshotReader.cs", true),
+    );
+  });
+
+  it("keeps a contiguous folder match over scattered file name characters", () => {
+    vi.spyOn(SessionStateManager, "matchingAlgorithm", "get").mockReturnValue("subsequence");
+
+    const text = "Sok.Data/Status/StateUser.cs";
+    const result = computeMatch("status", text, true);
+
+    expect(result.indices[0]).toBe(text.indexOf("Status"));
+  });
+
+  it.each(["subsequence", "substring"] as const)("keeps the first occurrence in free text (%s)", (algorithm) => {
+    vi.spyOn(SessionStateManager, "matchingAlgorithm", "get").mockReturnValue(algorithm);
+
+    const preview = "const user = load(); // admin/user";
+    const result = computeMatch("user", preview);
+
+    expect(result.indices[0]).toBe(preview.indexOf("user"));
+  });
 });

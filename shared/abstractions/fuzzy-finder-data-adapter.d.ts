@@ -61,6 +61,12 @@ export interface IFuzzyFinderDataAdapter<TData = any, TOption = string> {
    */
   getGlobPath?(option: TOption): string;
 
+  /**
+   * Whether the search text is a file path. Matching then prefers occurrences in the file name
+   * over folders with the same name. Leave unset for free text, where the last `/` may be in code.
+   */
+  searchTextIsPath?: boolean;
+
   sortFn?(x1: TOption, x2: TOption): number;
 
   htmlWrapperPreset?: HtmlWrapperPreset;

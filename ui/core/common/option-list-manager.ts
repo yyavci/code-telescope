@@ -376,7 +376,7 @@ export class OptionListManager {
       return {
         opt,
         searchText,
-        score: computeMatch(lowerQuery, searchText).score,
+        score: computeMatch(lowerQuery, searchText, this.dataAdapter!.searchTextIsPath).score,
       };
     });
 
@@ -505,7 +505,7 @@ export class OptionListManager {
 
     if (cached) return cached;
 
-    const result = computeMatch(lowerQuery, text);
+    const result = computeMatch(lowerQuery, text, this.dataAdapter?.searchTextIsPath);
     if (this.matchCache.size >= 500) {
       const oldestKey = this.matchCache.keys().next().value;
       if (oldestKey !== undefined) this.matchCache.delete(oldestKey);

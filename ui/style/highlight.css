@@ -59,13 +59,19 @@
   background-color: var(--vscode-diffEditor-removedLineBackground, rgba(248, 81, 73, 0.16)) !important;
 }
 
+/* Matched characters in a list row, styled like the editor's find matches. Each character is its own
+   span, so a radius would split a run of matches into separate boxes. */
 .highlight {
-  color: var(--vscode-list-highlightForeground, #2aaaff);
+  color: var(--vscode-editor-foreground);
   font-weight: 600;
-  background-color: transparent;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  border-radius: 1px;
+  background-color: var(--vscode-editor-findMatchHighlightBackground);
+  outline: 1px solid var(--vscode-editor-findMatchHighlightBorder, transparent);
+  outline-offset: -1px;
+}
+
+/* An explicit color, so matches inside muted text are not muted with it */
+.option-item.selected .highlight {
+  color: var(--vscode-list-activeSelectionForeground, inherit);
 }
 
 .preview-failed-container {
@@ -155,6 +161,29 @@
 /* Secondary part of a list row (directory, container), kept readable on the selected row */
 .sk-muted {
   color: var(--vscode-descriptionForeground);
+}
+
+/* `filename-first` path display: the file name keeps its width and the directory after it
+   shrinks, cut from the left by a right-to-left box so its last folders stay visible */
+.sk-path-filename-first {
+  display: flex;
+  min-width: 0;
+}
+
+.sk-path-file {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sk-path-directory {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 1ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
 }
 
 /* Mixes the color instead of using opacity, so highlighted matches inside stay at full strength */

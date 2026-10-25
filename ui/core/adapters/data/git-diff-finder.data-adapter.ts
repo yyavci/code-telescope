@@ -8,6 +8,7 @@ import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.deco
   type: "gitDiffsAdapter",
 })
 export class GitDiffFinderDataAdapter implements IFuzzyFinderDataAdapter<GitDiffInfo[], GitDiffInfo> {
+  searchTextIsPath = true;
   typeName!: DataAdapterType;
 
   parseOptions(data: GitDiffInfo[]): GitDiffInfo[] {

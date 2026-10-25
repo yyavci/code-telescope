@@ -511,10 +511,11 @@
                     "enum": [
                         "relative",
                         "absolute",
-                        "filename-only"
+                        "filename-only",
+                        "filename-first"
                     ],
                     "default": "relative",
-                    "description": "How to display file path",
+                    "description": "How to display file paths in the Workspace Files and Recent Files finders. `filename-first` shows the file name before its muted directory, so long paths are cut in the directory instead of the file name",
                     "order": 9
                 },
                 "codeTelescope.wsTextFinder.excludePatterns": {

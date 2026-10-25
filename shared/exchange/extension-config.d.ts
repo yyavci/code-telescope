@@ -6,7 +6,7 @@ export interface WsFileFinderConfig {
   maxFileSize: number;
   respectGitIgnore: boolean;
   asRelativePath: boolean;
-  textDisplay: "relative" | "absolte" | "filename-only";
+  textDisplay: "relative" | "absolute" | "filename-only" | "filename-first";
 }
 
 export interface WsTextFinderConfig {

@@ -1,7 +1,7 @@
 import { IFuzzyFinderDataAdapter } from "../../../../shared/abstractions/fuzzy-finder-data-adapter";
 import { DataAdapterType } from "../../../../shared/adapters-namespace";
 import { RecentFileData, RecentFilesFinderData } from "../../../../shared/exchange/recent-files";
-import { formatFileOptionHtml, muteDirectoryHtml } from "../../../utils/html";
+import { formatFileOptionHtml, formatFilePathHtml } from "../../../utils/html";
 import { getSvgIconUrl } from "../../../utils/icon";
 import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.decorator";
 
@@ -16,6 +16,7 @@ export interface RecentFileOption {
 })
 export class RecentFilesFinderDataAdapter implements IFuzzyFinderDataAdapter<RecentFilesFinderData, RecentFileOption> {
   typeName: DataAdapterType;
+  searchTextIsPath = true;
 
   parseOptions(data: RecentFilesFinderData): RecentFileOption[] {
     const options: RecentFileOption[] = [];
@@ -46,7 +47,7 @@ export class RecentFilesFinderDataAdapter implements IFuzzyFinderDataAdapter<Rec
     }
 
     const svgIconUrl = getSvgIconUrl(option.file.path);
-    return formatFileOptionHtml(svgIconUrl, muteDirectoryHtml(option.file.relativePath, highlightedContent));
+    return formatFileOptionHtml(svgIconUrl, formatFilePathHtml(option.file.relativePath, highlightedContent));
   }
 
   getSelectionValue(option: RecentFileOption): string {

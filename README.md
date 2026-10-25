@@ -205,7 +205,7 @@ Preview highlighting is powered by Shiki/TextMate grammars. In some languages/th
 | `codeTelescope.wsFileFinder.excludePatterns` | `["**/node_modules/**", ...]` | Glob patterns to exclude |
 | `codeTelescope.wsFileFinder.maxFileSize` | `150` | Max file size (KB) |
 | `codeTelescope.wsFileFinder.maxResults` | `2000` | Max results |
-| `codeTelescope.wsFileFinder.textDisplay` | `relative` | `relative`, `absolute`, or `filename-only` |
+| `codeTelescope.wsFileFinder.textDisplay` | `relative` | `relative`, `absolute`, `filename-only`, or `filename-first` (file name, then its muted directory; used by Workspace Files and Recent Files) |
 
 #### Glob filters in the input
 
