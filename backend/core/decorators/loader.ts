@@ -23,6 +23,9 @@ import "../finders/pkg-json.finder";
 import "../finders/builtin.finder";
 import "../finders/font-family.finder";
 import "../finders/lsp-refs.finder";
+import "../finders/lsp-implementations.finder";
+import "../finders/lsp-definitions.finder";
+import "../finders/lsp-type-definitions.finder";
 import "../finders/doom.finder";
 
 // PRESENTATION HANDLERS

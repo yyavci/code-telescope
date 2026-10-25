@@ -9,6 +9,7 @@ describe("ReferencesFinderDataAdapter", () => {
     references: [{ index: 2500, relativePath: "src/app.ts", line: 3, preview: "  target();", symbolName: "target" }],
     displayTexts: [""],
     currentSymbol: "target",
+    codicon: "symbol-interface",
   } as unknown as ReferenceFinderData;
   const option = adapter.parseOptions(data)[0];
 
@@ -24,5 +25,9 @@ describe("ReferencesFinderDataAdapter", () => {
     const html = adapter.getHtmlWrapper(option, adapter.getSearchText(option));
 
     expect(html).toContain(`<span class="sk-muted">src/app.ts</span> target();`);
+  });
+
+  it("renders the codicon of the finder that produced the locations", () => {
+    expect(adapter.getHtmlWrapper(option, "")).toContain("codicon-symbol-interface");
   });
 });

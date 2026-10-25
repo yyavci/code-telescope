@@ -146,6 +146,24 @@ const BUILTIN_PROVIDER_META: Record<FuzzyProviderType, ProviderMeta> = {
     previewTitle: "Reference Preview",
     promptMessage: "References...",
   },
+  "workspace.implementations": {
+    tabTitle: "LSP Implementations",
+    listTitle: "Implementations",
+    previewTitle: "Implementation Preview",
+    promptMessage: "Implementations...",
+  },
+  "workspace.definitions": {
+    tabTitle: "LSP Definitions",
+    listTitle: "Definitions",
+    previewTitle: "Definition Preview",
+    promptMessage: "Definitions...",
+  },
+  "workspace.typeDefinitions": {
+    tabTitle: "LSP Type Definitions",
+    listTitle: "Type Definitions",
+    previewTitle: "Type Definition Preview",
+    promptMessage: "Type definitions...",
+  },
   "fun.doom": {
     tabTitle: "DOOM",
     listTitle: "Game",

@@ -8,6 +8,7 @@ export interface ReferenceOption {
   index: number;
   ref: ReferenceInfo;
   displayText: string;
+  codicon: string;
 }
 
 @FuzzyFinderDataAdapter({
@@ -22,6 +23,7 @@ export class ReferencesFinderDataAdapter implements IFuzzyFinderDataAdapter<Refe
       index: i,
       ref,
       displayText: data.displayTexts[i],
+      codicon: data.codicon,
     }));
   }
 
@@ -38,7 +40,7 @@ export class ReferencesFinderDataAdapter implements IFuzzyFinderDataAdapter<Refe
     const [pathHtml, previewHtml] = splitHighlightedHtml(highlightedContent, option.ref.relativePath.length);
     const lineTag = `<span class="sk-line-number">:${option.ref.line}</span>`;
     return `
-      <i class="codicon codicon-references file-icon"></i>
+      <i class="codicon codicon-${option.codicon} file-icon"></i>
       <span class="file-path"><span class="sk-muted">${pathHtml}</span>${previewHtml}</span>
       ${lineTag}
     `;

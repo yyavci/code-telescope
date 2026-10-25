@@ -236,9 +236,11 @@ repository -g *.cs -g !*Test*.cs   # ...but skip *Test*.cs
 
 The input accepts the same trailing `-g <glob>` filters as the Workspace File Finder (`repository -g *.cs -g !*Test*.cs`), passed to ripgrep as `--glob`. Settings excludes always win over them. When globs are present there is no regex fallback (it cannot apply them), so the search returns nothing if ripgrep is unavailable or rejects a half-typed glob such as `*.{cs`. While globs are present, ripgrep also matches the settings excludes case-insensitively (`--glob-case-insensitive`), so they can only exclude more.
 
-### Workspace Symbols, References, Git Diffs and Recent Files
+### Workspace Symbols, LSP Locations, Git Diffs and Recent Files
 
-These finders accept the same trailing `-g <glob>` filters (`calculate -g !*Tests.cs`), matched in the webview against the file path of each item: the workspace-relative path for symbols, references and recent files (absolute for files outside the workspace), the repository-relative path for diffs. Terminal entries in Recent Files have no path, so include globs hide them and exclude globs keep them.
+These finders accept the same trailing `-g <glob>` filters (`calculate -g !*Tests.cs`), matched in the webview against the file path of each item: the workspace-relative path for symbols, LSP locations (references, implementations, definitions, type definitions) and recent files (absolute for files outside the workspace), the repository-relative path for diffs. Terminal entries in Recent Files have no path, so include globs hide them and exclude globs keep them.
+
+Implementations, Definitions and Type Definitions jump straight to the location when the language server returns a single result; References always lists them.
 
 For Workspace Symbols the query is sent to the language server and the globs are applied to the symbols it returns. Language servers cap the number of results, so a broad query with a narrow glob can show fewer matches than exist. Changing only the globs filters the current results without querying the language server again, and an input made only of globs filters the list already shown.
 
@@ -274,6 +276,9 @@ For Workspace Symbols the query is sent to the language server and the globs are
 | ⚠️ Diagnostics | `code-telescope.fuzzy.diagnostics` | `Alt+M Shift+D` |
 | 📞 Call Hierarchy | `code-telescope.fuzzy.callHierarchy` | `Alt+M H` |
 | 🔗 LSP References | `code-telescope.fuzzy.lspRefs` | `Alt+M N` |
+| 🧩 LSP Implementations | `code-telescope.fuzzy.lspImplementations` | `Alt+M I` |
+| 🎯 LSP Definitions | `code-telescope.fuzzy.lspDefinitions` | `Alt+M O` |
+| 🏷️ LSP Type Definitions | `code-telescope.fuzzy.lspTypeDefinitions` | `Alt+M Y` |
 | 🔥 DOOM Shareware | `code-telescope.fuzzy.doom` | Command Palette |
 | 🔑 Keybindings | `code-telescope.fuzzy.keybindings` | `Alt+M K` |
 | 🎨 Color Schemes | `code-telescope.fuzzy.colorschemes` | `Alt+M T` |

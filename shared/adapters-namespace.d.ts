@@ -24,6 +24,9 @@ export type BuiltinFuzzyProviderType =
   | "workspace.fonts"
   | "workspace.packageDocs"
   | "workspace.references"
+  | "workspace.implementations"
+  | "workspace.definitions"
+  | "workspace.typeDefinitions"
   | "workspace.extensions"
   | "fun.doom";
 

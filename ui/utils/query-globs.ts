@@ -54,6 +54,9 @@ const LOCAL_GLOB_PROVIDERS: readonly FuzzyProviderType[] = [
   "workspace.files",
   "workspace.recentFiles",
   "workspace.references",
+  "workspace.implementations",
+  "workspace.definitions",
+  "workspace.typeDefinitions",
   "workspace.symbols",
   "git.diffs",
 ];

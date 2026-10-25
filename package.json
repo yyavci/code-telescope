@@ -134,6 +134,18 @@
                 "title": "Code Telescope: Workspace References"
             },
             {
+                "command": "code-telescope.fuzzy.lspImplementations",
+                "title": "Code Telescope: Implementations"
+            },
+            {
+                "command": "code-telescope.fuzzy.lspDefinitions",
+                "title": "Code Telescope: Definitions"
+            },
+            {
+                "command": "code-telescope.fuzzy.lspTypeDefinitions",
+                "title": "Code Telescope: Type Definitions"
+            },
+            {
                 "command": "code-telescope.fuzzy.doom",
                 "title": "Code Telescope: Run DOOM"
             },
@@ -256,6 +268,21 @@
                 "command": "code-telescope.fuzzy.lspRefs",
                 "key": "alt+m n",
                 "mac": "alt+m n"
+            },
+            {
+                "command": "code-telescope.fuzzy.lspImplementations",
+                "key": "alt+m i",
+                "mac": "alt+m i"
+            },
+            {
+                "command": "code-telescope.fuzzy.lspDefinitions",
+                "key": "alt+m o",
+                "mac": "alt+m o"
+            },
+            {
+                "command": "code-telescope.fuzzy.lspTypeDefinitions",
+                "key": "alt+m y",
+                "mac": "alt+m y"
             },
             {
                 "command": "code-telescope.fuzzy.keybindings",

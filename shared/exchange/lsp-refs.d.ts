@@ -14,4 +14,6 @@ export interface ReferenceFinderData {
   references: ReferenceInfo[];
   displayTexts: string[];
   currentSymbol: string | undefined;
+  /** Codicon of the finder that produced the locations (references, implementations...) */
+  codicon: string;
 }
