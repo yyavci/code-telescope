@@ -26,6 +26,15 @@ type BasePreviewData = {
   overridePreviewer?: PreviewRendererType;
 };
 
+/**
+ * Character range (0-based, end exclusive) on `metadata.highlightLine` that the buffer preview
+ * marks as the current match.
+ */
+export interface PreviewHighlightRange {
+  start: number;
+  end: number;
+}
+
 type TextPreviewData = BasePreviewData & {
   kind: "text";
   content: string;

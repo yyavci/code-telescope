@@ -1,7 +1,7 @@
 import type { GrammarState, ThemedToken } from "shiki";
 import { PreviewRendererType } from "../../../../shared/adapters-namespace";
 import { PreviewManagerConfig } from "../../../../shared/exchange/extension-config";
-import { TextPreviewData } from "../../../../shared/extension-webview-protocol";
+import { PreviewHighlightRange, TextPreviewData } from "../../../../shared/extension-webview-protocol";
 import { toInnerHTML } from "../../../utils/html";
 import { getLanguageIdForFile } from "../../../utils/icon";
 import { centerElementVertically } from "../../../utils/scroll";
@@ -94,6 +94,79 @@ function getDiffLineClass(line: string, enabled: boolean): string {
   return "";
 }
 
+const MATCH_CLASS = "preview-match";
+/** Added when the theme defines a match foreground, which must then override the token colors. */
+const MATCH_FOREGROUND_CLASS = "preview-match--fg";
+const MATCH_FOREGROUND_VARIABLE = "--vscode-editor-findMatchForeground";
+
+function renderTokenSpan(token: ThemedToken, content: string): string {
+  if (!token.color && !token.bgColor && !token.fontStyle) {
+    return `<span>${escapeHtml(content)}</span>`;
+  }
+
+  let style = "";
+  if (token.color) style += `color:${token.color};`;
+  if (token.bgColor) style += `background-color:${token.bgColor};`;
+  if (token.fontStyle) {
+    if (token.fontStyle & 1) style += "font-style:italic;";
+    if (token.fontStyle & 2) style += "font-weight:bold;";
+    if (token.fontStyle & 4) style += "text-decoration:underline;";
+  }
+
+  return `<span style="${style}">${escapeHtml(content)}</span>`;
+}
+
+/**
+ * Renders the tokens of a line, wrapping the characters inside `range` in a single match span
+ * (one box even when the match crosses tokens). The range is clamped to the truncation length,
+ * so the `...` suffix of a long line is never marked.
+ */
+export function renderTokensWithMatch(tokens: ThemedToken[], range: PreviewHighlightRange, matchClass: string): string {
+  const rangeEnd = Math.min(range.end, MAX_LINE_LENGTH);
+  let html = "";
+  let offset = 0;
+  let isMatchOpen = false;
+
+  for (const token of tokens) {
+    const tokenStart = offset;
+    const tokenEnd = offset + token.content.length;
+    offset = tokenEnd;
+
+    const matchStart = Math.max(range.start, tokenStart);
+    const matchEnd = Math.min(rangeEnd, tokenEnd);
+    if (matchStart >= matchEnd) {
+      html += renderTokenSpan(token, token.content);
+      continue;
+    }
+
+    const before = token.content.slice(0, matchStart - tokenStart);
+    const inside = token.content.slice(matchStart - tokenStart, matchEnd - tokenStart);
+    const after = token.content.slice(matchEnd - tokenStart);
+    if (before) html += renderTokenSpan(token, before);
+    if (!isMatchOpen) {
+      html += `<span class="${matchClass}">`;
+      isMatchOpen = true;
+    }
+    html += renderTokenSpan(token, inside);
+    if (matchEnd === rangeEnd) {
+      html += "</span>";
+      isMatchOpen = false;
+    }
+    if (after) html += renderTokenSpan(token, after);
+  }
+
+  // The range runs past the last token
+  if (isMatchOpen) html += "</span>";
+  return html;
+}
+
+function getMatchClass(): string {
+  const hasMatchForeground = getComputedStyle(document.documentElement)
+    .getPropertyValue(MATCH_FOREGROUND_VARIABLE)
+    .trim();
+  return hasMatchForeground ? `${MATCH_CLASS} ${MATCH_FOREGROUND_CLASS}` : MATCH_CLASS;
+}
+
 function makeHtmlFromTokens(
   lineTokens: ThemedToken[][],
   rawLines: string[],
@@ -104,6 +177,7 @@ function makeHtmlFromTokens(
   highlightLineNum?: number,
   showLineNumbers: boolean = true,
   enableDiffLineDecorations: boolean = false,
+  highlightRange?: PreviewHighlightRange,
 ): string {
   const lineHtmlParts = lineTokens.map((tokens, index) => {
     const currentLineNum = startLineIndex + index + 1;
@@ -113,24 +187,10 @@ function makeHtmlFromTokens(
     const lineClass = isHighlighted ? `class="line highlighted${diffLineClass}"` : `class="line${diffLineClass}"`;
     const dataLine = showLineNumbers ? ` data-line="${currentLineNum}"` : "";
 
-    const tokenSpans = tokens
-      .map((token) => {
-        if (!token.color && !token.bgColor && !token.fontStyle) {
-          return `<span>${escapeHtml(token.content)}</span>`;
-        }
-
-        let style = "";
-        if (token.color) style += `color:${token.color};`;
-        if (token.bgColor) style += `background-color:${token.bgColor};`;
-        if (token.fontStyle) {
-          if (token.fontStyle & 1) style += "font-style:italic;";
-          if (token.fontStyle & 2) style += "font-weight:bold;";
-          if (token.fontStyle & 4) style += "text-decoration:underline;";
-        }
-
-        return `<span style="${style}">${escapeHtml(token.content)}</span>`;
-      })
-      .join("");
+    const tokenSpans =
+      isHighlighted && highlightRange
+        ? renderTokensWithMatch(tokens, highlightRange, getMatchClass())
+        : tokens.map((token) => renderTokenSpan(token, token.content)).join("");
 
     return `<span ${lineClass}${dataLine}>${tokenSpans}</span>`;
   });
@@ -359,6 +419,7 @@ export class BufferPreviewRendererAdapter implements IPreviewRendererAdapter {
         metadata?.highlightLine,
         showLineNumbers,
         shouldDecorateDiffLines,
+        metadata?.highlightRange,
       );
 
       this.chunkHtmlCache.set(chunkIndex, html);

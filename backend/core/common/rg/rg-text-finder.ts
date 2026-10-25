@@ -69,14 +69,17 @@ export class RipgrepTextFinder {
           if (result.type !== "match") continue;
 
           const data = result.data;
-          const lineText = data.lines.text.trim();
+          const rawLineText: string = data.lines.text;
+          const lineText = rawLineText.trim();
           const rawPath = data.path.text;
           const resolvedPath = path.isAbsolute(rawPath) ? path.normalize(rawPath) : path.resolve(cwd, rawPath);
+          const matchRange = toCharacterRange(rawLineText, data.submatches[0]);
 
           matches.push({
             file: resolvedPath,
             line: data.line_number,
-            column: (data.submatches[0]?.start ?? 0) + 1,
+            column: matchRange.start + 1,
+            matchLength: matchRange.end - matchRange.start,
             text: lineText,
             preview: lineText,
           });
@@ -86,4 +89,20 @@ export class RipgrepTextFinder {
       if (matches.length > 0) yield matches;
     }
   }
+}
+
+/**
+ * ripgrep reports submatch offsets in UTF-8 bytes, while editor positions and the preview
+ * count UTF-16 characters, so offsets drift on lines with non-ASCII text.
+ */
+export function toCharacterRange(
+  lineText: string,
+  submatch?: { start: number; end: number },
+): { start: number; end: number } {
+  if (!submatch) return { start: 0, end: 0 };
+
+  const lineBytes = Buffer.from(lineText, "utf8");
+  const start = lineBytes.subarray(0, submatch.start).toString("utf8").length;
+  const end = lineBytes.subarray(0, submatch.end).toString("utf8").length;
+  return { start, end };
 }

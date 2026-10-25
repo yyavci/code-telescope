@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { TextPreviewData } from "../../../../shared/extension-webview-protocol";
+import { PreviewHighlightRange, TextPreviewData } from "../../../../shared/extension-webview-protocol";
 import { ChunkableProvider } from "../../abstractions/chunkable-provider";
 import { FileReader } from "../../common/file-reader";
 import { RipgrepTextFinder } from "../../common/rg/rg-text-finder";
@@ -112,16 +112,25 @@ export class WorkspaceTextSearchProvider implements FuzzyFinderProvider, Chunkab
     const filePath = parts[0];
     const lineStr = parts[1];
     const colStr = parts[2] || "1";
+    const matchLengthStr = parts[3];
 
     return {
       filePath,
       lineStr,
       colStr,
+      matchLengthStr,
     };
   }
 
+  private static toHighlightRange(colStr: string, matchLengthStr?: string): PreviewHighlightRange | undefined {
+    const start = parseInt(colStr, 10) - 1;
+    const length = matchLengthStr ? parseInt(matchLengthStr, 10) : NaN;
+    if (Number.isNaN(start) || Number.isNaN(length) || length <= 0) return undefined;
+    return { start, end: start + length };
+  }
+
   async getPreviewData(identifier: string): Promise<TextPreviewData> {
-    const { filePath, lineStr } = WorkspaceTextSearchProvider.destructureIdentifier(identifier);
+    const { filePath, lineStr, colStr, matchLengthStr } = WorkspaceTextSearchProvider.destructureIdentifier(identifier);
 
     try {
       const content = await FileReader.read(filePath);
@@ -133,6 +142,7 @@ export class WorkspaceTextSearchProvider implements FuzzyFinderProvider, Chunkab
         metadata: {
           filePath,
           highlightLine: lineStr ? parseInt(lineStr, 10) - 1 : undefined,
+          highlightRange: WorkspaceTextSearchProvider.toHighlightRange(colStr, matchLengthStr),
           totalLines: lines.length,
         },
       };

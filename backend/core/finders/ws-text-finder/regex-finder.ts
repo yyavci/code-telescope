@@ -62,6 +62,7 @@ export class RegexFinder {
                   file: uri,
                   line: lineNumber,
                   column: matchIndex - lineStart + 1,
+                  matchLength: match[0].length,
                   text: lineContent.trim(),
                   preview: lineContent.trim(),
                 });

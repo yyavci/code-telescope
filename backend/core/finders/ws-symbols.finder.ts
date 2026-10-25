@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { TextPreviewData } from "../../../shared/extension-webview-protocol";
 import { execCmd } from "../../utils/commands";
-import { getSymbolCodicon } from "../../utils/symbol";
+import { findSymbolNameRange, getSymbolCodicon } from "../../utils/symbol";
 import { FileReader } from "../common/file-reader";
 import { FuzzyFinderAdapter, FuzzyFinderProvider } from "../decorators/fuzzy-finder-provider.decorator";
 
@@ -77,6 +77,8 @@ export class WorkspaceSymbolsFinder implements FuzzyFinderProvider {
 
     const filePath = target.uri.fsPath;
     const content = await FileReader.read(filePath);
+    // FileReader returns bytes for image files, which have no line to mark
+    const lineText = typeof content === "string" ? (content.split("\n")[target.position.line] ?? "") : "";
 
     return {
       content: content as string,
@@ -84,29 +86,33 @@ export class WorkspaceSymbolsFinder implements FuzzyFinderProvider {
       metadata: {
         filePath,
         highlightLine: target.position.line,
+        highlightRange: findSymbolNameRange(lineText, target.name, target.position.character),
       },
     };
   }
 
   /**
-   * Builds `uri||line||character`. `Uri.toString()` percent-encodes `|`, so the separator cannot
-   * appear inside the uri part.
+   * Builds `uri||line||character||name`. `Uri.toString()` and `encodeURIComponent` percent-encode `|`,
+   * so the separator cannot appear inside the uri or name parts.
    */
-  static buildIdentifier(uri: vscode.Uri, position: vscode.Position): string {
-    return [uri.toString(), position.line, position.character].join(IDENTIFIER_SEPARATOR);
+  static buildIdentifier(uri: vscode.Uri, position: vscode.Position, name: string): string {
+    return [uri.toString(), position.line, position.character, encodeURIComponent(name)].join(IDENTIFIER_SEPARATOR);
   }
 
-  static destructureIdentifier(identifier: string): { uri: vscode.Uri; position: vscode.Position } | undefined {
+  static destructureIdentifier(
+    identifier: string,
+  ): { uri: vscode.Uri; position: vscode.Position; name: string } | undefined {
     const parts = identifier.split(IDENTIFIER_SEPARATOR);
-    if (parts.length < 3) return undefined;
+    if (parts.length < 4) return undefined;
 
+    const name = parts.pop()!;
     const character = parseInt(parts.pop()!, 10);
     const line = parseInt(parts.pop()!, 10);
     if (Number.isNaN(line) || Number.isNaN(character)) return undefined;
 
     try {
       const uri = vscode.Uri.parse(parts.join(IDENTIFIER_SEPARATOR), true);
-      return { uri, position: new vscode.Position(line, character) };
+      return { uri, position: new vscode.Position(line, character), name: decodeURIComponent(name) };
     } catch (error) {
       console.error(`Invalid workspace symbol identifier "${identifier}":`, error);
       return undefined;
@@ -147,7 +153,11 @@ export class WorkspaceSymbolsFinder implements FuzzyFinderProvider {
         location: symbol.location,
         uri: symbol.location.uri,
         relativePath: vscode.workspace.asRelativePath(symbol.location.uri),
-        identifier: WorkspaceSymbolsFinder.buildIdentifier(symbol.location.uri, symbol.location.range.start),
+        identifier: WorkspaceSymbolsFinder.buildIdentifier(
+          symbol.location.uri,
+          symbol.location.range.start,
+          symbol.name,
+        ),
       }));
     } catch (error) {
       vscode.window.showErrorMessage(`Error fetching workspace symbols: ${error}`);

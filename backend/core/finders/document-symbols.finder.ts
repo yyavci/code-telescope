@@ -85,7 +85,7 @@ export class DocumentSymbolsFinder implements FuzzyFinderProvider {
     }
 
     const filePath = selected.uri.fsPath;
-    const highlightLine = selected.selectionRange.start.line;
+    const { start, end } = selected.selectionRange;
     const content = await FileReader.read(filePath);
 
     return {
@@ -93,7 +93,9 @@ export class DocumentSymbolsFinder implements FuzzyFinderProvider {
       kind: "text",
       metadata: {
         filePath,
-        highlightLine,
+        highlightLine: start.line,
+        // selectionRange is the symbol name; a multi-line one cannot be marked on a single line
+        highlightRange: start.line === end.line ? { start: start.character, end: end.character } : undefined,
       },
     };
   }

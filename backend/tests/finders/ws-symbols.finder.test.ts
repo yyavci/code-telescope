@@ -1,9 +1,11 @@
 import { WorkspaceSymbolsFinder } from "@backend/core/finders/ws-symbols.finder";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as vscode from "vscode";
+import { FileReader } from "../../core/common/file-reader";
 import { execCmd } from "../../utils/commands";
 
-vi.mock("@backend/utils/symbol", () => ({
+vi.mock("@backend/utils/symbol", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../utils/symbol")>()),
   getSymbolCodicon: vi.fn().mockReturnValue("symbol-method"),
 }));
 
@@ -64,7 +66,7 @@ describe("WorkspaceSymbolsFinder", () => {
 
       expect(execCmd).toHaveBeenCalledWith("vscode.executeWorkspaceSymbolProvider", "UserServ");
       expect(result.symbols).toHaveLength(1);
-      expect(result.symbols[0].identifier).toBe(`${SYMBOL_URI}||9||17`);
+      expect(result.symbols[0].identifier).toBe(`${SYMBOL_URI}||9||17||UserService`);
       expect(result.symbols[0].kindName).toBe("Class");
       expect(result.symbols[0].relativePath).toBe(SYMBOL_URI);
       expect(result.displayTexts[0]).toBe(`${"UserService".padEnd(40)} -> ${SYMBOL_URI} [App.Services]`);
@@ -82,14 +84,25 @@ describe("WorkspaceSymbolsFinder", () => {
 
   describe("destructureIdentifier", () => {
     it("should parse uri and position", () => {
-      const target = WorkspaceSymbolsFinder.destructureIdentifier(`${SYMBOL_URI}||9||17`);
+      const target = WorkspaceSymbolsFinder.destructureIdentifier(`${SYMBOL_URI}||9||17||UserService`);
 
       expect(target?.uri.toString()).toBe(SYMBOL_URI);
       expect(target?.position).toEqual({ line: 9, character: 17 });
+      expect(target?.name).toBe("UserService");
+    });
+
+    it("decodes names containing the separator", () => {
+      const identifier = WorkspaceSymbolsFinder.buildIdentifier(
+        vscode.Uri.parse(SYMBOL_URI),
+        new vscode.Position(1, 2),
+        "operator ||",
+      );
+
+      expect(WorkspaceSymbolsFinder.destructureIdentifier(identifier)?.name).toBe("operator ||");
     });
 
     it("should keep the separator inside the uri part", () => {
-      const target = WorkspaceSymbolsFinder.destructureIdentifier("file:///a||b.cs||3||4");
+      const target = WorkspaceSymbolsFinder.destructureIdentifier("file:///a||b.cs||3||4||Foo");
 
       expect(target?.uri.toString()).toBe("file:///a||b.cs");
       expect(target?.position).toEqual({ line: 3, character: 4 });
@@ -97,7 +110,7 @@ describe("WorkspaceSymbolsFinder", () => {
 
     it("should reject malformed identifiers", () => {
       expect(WorkspaceSymbolsFinder.destructureIdentifier("999")).toBeUndefined();
-      expect(WorkspaceSymbolsFinder.destructureIdentifier(`${SYMBOL_URI}||x||1`)).toBeUndefined();
+      expect(WorkspaceSymbolsFinder.destructureIdentifier(`${SYMBOL_URI}||x||1||Foo`)).toBeUndefined();
     });
   });
 
@@ -107,7 +120,7 @@ describe("WorkspaceSymbolsFinder", () => {
       vi.mocked(vscode.workspace.openTextDocument).mockResolvedValue({} as any);
       vi.mocked(vscode.window.showTextDocument).mockResolvedValue(editor as any);
 
-      await finder.onSelect(`${SYMBOL_URI}||9||17`);
+      await finder.onSelect(`${SYMBOL_URI}||9||17||UserService`);
 
       expect(execCmd).not.toHaveBeenCalled();
       expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(expect.objectContaining({ fsPath: SYMBOL_URI }));
@@ -124,11 +137,19 @@ describe("WorkspaceSymbolsFinder", () => {
 
   describe("getPreviewData", () => {
     it("should return the file with the symbol line highlighted", async () => {
-      const result = await finder.getPreviewData(`${SYMBOL_URI}||9||17`);
+      const result = await finder.getPreviewData(`${SYMBOL_URI}||9||17||UserService`);
 
       expect(execCmd).not.toHaveBeenCalled();
       expect(result.content).toBe("file content");
-      expect(result.metadata).toEqual({ filePath: SYMBOL_URI, highlightLine: 9 });
+      expect(result.metadata).toEqual({ filePath: SYMBOL_URI, highlightLine: 9, highlightRange: undefined });
+    });
+
+    it("marks the symbol name on the highlighted line", async () => {
+      vi.mocked(FileReader.read).mockResolvedValueOnce("namespace App;\npublic class UserService {}");
+
+      const result = await finder.getPreviewData(`${SYMBOL_URI}||1||0||UserService`);
+
+      expect(result.metadata?.highlightRange).toEqual({ start: 13, end: 24 });
     });
 
     it("should return default message for an invalid identifier", async () => {

@@ -10,6 +10,12 @@ vi.mock("@backend/core/common/cache/file-reader", () => ({
   },
 }));
 
+vi.mock("@backend/core/common/file-reader", () => ({
+  FileReader: {
+    read: vi.fn().mockResolvedValue("line one\nconst value = 42;"),
+  },
+}));
+
 vi.mock("@backend/core/finders/ws-text-finder/regex-finder", () => {
   const RegexFinder = vi.fn(
     class MockClass {
@@ -141,5 +147,19 @@ describe("WorkspaceTextSearchProvider", () => {
     await provider.onSelect("/tmp/file.ts:3:5");
 
     expect(vscode.window.showTextDocument).toHaveBeenCalled();
+  });
+
+  describe("getPreviewData", () => {
+    it("marks the match range on the highlighted line", async () => {
+      const result = await provider.getPreviewData("/tmp/file.ts||2||7||5");
+
+      expect(result.metadata).toMatchObject({ highlightLine: 1, highlightRange: { start: 6, end: 11 } });
+    });
+
+    it("omits the range for identifiers without a match length", async () => {
+      const result = await provider.getPreviewData("/tmp/file.ts||2||7");
+
+      expect(result.metadata).toMatchObject({ highlightLine: 1, highlightRange: undefined });
+    });
   });
 });

@@ -21,7 +21,9 @@ export class TextFinderDataAdapter implements IFuzzyFinderDataAdapter<TextSearch
 
   parseOptions(data: TextSearchData): SearchOption[] {
     return data.results.map((match) => ({
-      identifier: `${match.file}||${match.line}||${match.column}`,
+      identifier: [match.file, match.line, match.column, match.matchLength]
+        .filter((part) => part !== undefined)
+        .join("||"),
       file: match.file,
       line: match.line,
       preview: match.preview,

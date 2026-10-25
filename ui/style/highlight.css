@@ -21,6 +21,18 @@
   margin-left: -2px;
 }
 
+/* Current match on the highlighted preview line, styled like the editor's find match.
+   The id selector outranks `#preview pre span`, which makes every span background transparent. */
+#preview pre span.preview-match {
+  background-color: var(--vscode-editor-findMatchBackground);
+  outline: 1px solid var(--vscode-editor-findMatchBorder, transparent);
+  border-radius: 2px;
+}
+
+.preview-match--fg > span {
+  color: var(--vscode-editor-findMatchForeground) !important;
+}
+
 .shiki .line[data-line] {
   position: relative;
   padding-left: 2.5em;

@@ -62,4 +62,13 @@ describe("WorkspaceTextFinderDataAdapter", () => {
       '<span class="file-path"><span class="sk-muted">index.ts:10 </span>const value = 42;</span>',
     );
   });
+
+  it("adds the match length to the identifier when known", () => {
+    const [option] = adapter.parseOptions({
+      results: [{ file: "/a.ts", line: 1, column: 3, matchLength: 4, preview: "x", text: "" }],
+      query: "x",
+    });
+
+    expect(option.identifier).toBe("/a.ts||1||3||4");
+  });
 });
