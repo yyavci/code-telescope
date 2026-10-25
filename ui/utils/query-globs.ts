@@ -50,7 +50,12 @@ export function parseQueryGlobs(input: string): ParsedQueryGlobs {
 }
 
 /** Providers that filter their list by glob in the webview, matching the adapter's path. */
-const LOCAL_GLOB_PROVIDERS: readonly FuzzyProviderType[] = ["workspace.files", "workspace.symbols", "git.diffs"];
+const LOCAL_GLOB_PROVIDERS: readonly FuzzyProviderType[] = [
+  "workspace.files",
+  "workspace.recentFiles",
+  "workspace.symbols",
+  "git.diffs",
+];
 
 /** Whether the provider accepts `-g` globs in its input. */
 function supportsQueryGlobs(provider: FuzzyProviderType): boolean {

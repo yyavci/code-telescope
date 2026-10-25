@@ -1,7 +1,7 @@
 import { IFuzzyFinderDataAdapter } from "../../../../shared/abstractions/fuzzy-finder-data-adapter";
 import { DataAdapterType } from "../../../../shared/adapters-namespace";
 import { RecentFileData, RecentFilesFinderData } from "../../../../shared/exchange/recent-files";
-import { formatFileOptionHtml } from "../../../utils/html";
+import { formatFileOptionHtml, muteDirectoryHtml } from "../../../utils/html";
 import { getSvgIconUrl } from "../../../utils/icon";
 import { FuzzyFinderDataAdapter } from "../../decorators/fuzzy-data-adapter.decorator";
 
@@ -35,13 +35,18 @@ export class RecentFilesFinderDataAdapter implements IFuzzyFinderDataAdapter<Rec
     return option.file.relativePath;
   }
 
+  /** Terminals have no file path, so include globs hide them and exclude globs keep them. */
+  getGlobPath(option: RecentFileOption): string {
+    return option.file.kind === "terminal" ? "" : option.file.relativePath;
+  }
+
   getHtmlWrapper(option: RecentFileOption, highlightedContent: string): string {
     if (option.file.kind === "terminal") {
       return `<i class="codicon codicon-terminal file-icon"></i><span class="file-path">${highlightedContent}</span>`;
     }
 
     const svgIconUrl = getSvgIconUrl(option.file.path);
-    return formatFileOptionHtml(svgIconUrl, highlightedContent);
+    return formatFileOptionHtml(svgIconUrl, muteDirectoryHtml(option.file.relativePath, highlightedContent));
   }
 
   getSelectionValue(option: RecentFileOption): string {
