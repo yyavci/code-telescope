@@ -12,5 +12,4 @@ export class DefinitionsFinder extends LspLocationsFinder {
   protected readonly locationCommand = "vscode.executeDefinitionProvider";
   protected readonly codicon = "symbol-method";
   protected readonly emptyMessage = "No definitions found";
-  protected readonly jumpToSingleResult = true;
 }

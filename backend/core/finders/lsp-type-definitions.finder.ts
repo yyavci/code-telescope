@@ -12,5 +12,4 @@ export class TypeDefinitionsFinder extends LspLocationsFinder {
   protected readonly locationCommand = "vscode.executeTypeDefinitionProvider";
   protected readonly codicon = "symbol-class";
   protected readonly emptyMessage = "No type definitions found";
-  protected readonly jumpToSingleResult = true;
 }

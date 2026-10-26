@@ -240,7 +240,7 @@ The input accepts the same trailing `-g <glob>` filters as the Workspace File Fi
 
 These finders accept the same trailing `-g <glob>` filters (`calculate -g !*Tests.cs`), matched in the webview against the file path of each item: the workspace-relative path for symbols, LSP locations (references, implementations, definitions, type definitions) and recent files (absolute for files outside the workspace), the repository-relative path for diffs. Terminal entries in Recent Files have no path, so include globs hide them and exclude globs keep them.
 
-Implementations, Definitions and Type Definitions jump straight to the location when the language server returns a single result; References always lists them.
+Implementations, Definitions and Type Definitions ask the language server before opening the panel: a single result opens directly, nothing found shows a message, and the panel only opens for several results. Opened from the builtin finder list or resumed, they always list. References always lists them.
 
 For Workspace Symbols the query is sent to the language server and the globs are applied to the symbols it returns. Language servers cap the number of results, so a broad query with a narrow glob can show fewer matches than exist. Changing only the globs filters the current results without querying the language server again, and an input made only of globs filters the list already shown.
 

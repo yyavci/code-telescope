@@ -65,7 +65,13 @@ vi.mock("vscode", () => {
       HighContrast: 3,
       HighContrastLight: 4,
     },
+    ProgressLocation: {
+      Window: 10,
+    },
     window: {
+      withProgress: vi.fn((_options: unknown, task: (progress: unknown, token: unknown) => unknown) =>
+        task({ report: vi.fn() }, { isCancellationRequested: false }),
+      ),
       showTextDocument: vi.fn().mockResolvedValue({
         revealRange: vi.fn(),
       }),

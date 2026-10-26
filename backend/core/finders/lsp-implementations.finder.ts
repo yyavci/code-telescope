@@ -12,5 +12,4 @@ export class ImplementationsFinder extends LspLocationsFinder {
   protected readonly locationCommand = "vscode.executeImplementationProvider";
   protected readonly codicon = "symbol-interface";
   protected readonly emptyMessage = "No implementations found";
-  protected readonly jumpToSingleResult = true;
 }

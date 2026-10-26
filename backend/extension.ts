@@ -1,13 +1,15 @@
 import * as vscode from "vscode";
-import { CustomFuzzyProviderType } from "../shared/adapters-namespace";
+import { CustomFuzzyProviderType, FuzzyProviderType } from "../shared/adapters-namespace";
 import { CustomProviderLoader } from "./core/common/custom/custom-provider.loader";
 import { CustomProviderStorage } from "./core/common/custom/custom-provider.storage";
 import { PreContextManager } from "./core/common/pre-context";
 import "./core/decorators/loader";
 import { HarpoonProvider } from "./core/finders/harpoon.finder";
+import { LspLocationsFinder } from "./core/finders/lsp-locations.finder";
 import { Logger } from "./core/log";
 import { FuzzyFinderPanelController } from "./core/presentation/fuzzy-panel.controller";
 import { WebviewController } from "./core/presentation/webview.controller";
+import { FuzzyFinderAdapterRegistry } from "./core/registry/fuzzy-provider.registry";
 import { Globals } from "./globals";
 import { registerHarpoonCmds } from "./harpoon/commands";
 import { HarpoonOrchestrator } from "./harpoon/orchestrator";
@@ -79,17 +81,9 @@ export async function activate(ctx: vscode.ExtensionContext) {
   registerFuzzyFinder("resume", () => FuzzyFinderPanelController.resumeLastSession(), ctx);
   registerFuzzyFinder("fontFamily", () => FuzzyFinderPanelController.setupProvider("workspace.fonts"), ctx);
   registerFuzzyFinder("lspRefs", () => FuzzyFinderPanelController.setupProvider("workspace.references"), ctx);
-  registerFuzzyFinder(
-    "lspImplementations",
-    () => FuzzyFinderPanelController.setupProvider("workspace.implementations"),
-    ctx,
-  );
-  registerFuzzyFinder("lspDefinitions", () => FuzzyFinderPanelController.setupProvider("workspace.definitions"), ctx);
-  registerFuzzyFinder(
-    "lspTypeDefinitions",
-    () => FuzzyFinderPanelController.setupProvider("workspace.typeDefinitions"),
-    ctx,
-  );
+  registerFuzzyFinder("lspImplementations", () => openLocationsOrList("workspace.implementations"), ctx);
+  registerFuzzyFinder("lspDefinitions", () => openLocationsOrList("workspace.definitions"), ctx);
+  registerFuzzyFinder("lspTypeDefinitions", () => openLocationsOrList("workspace.typeDefinitions"), ctx);
   registerFuzzyFinder("doom", () => FuzzyFinderPanelController.setupProvider("fun.doom"), ctx);
   registerFuzzyFinder(
     "custom",
@@ -116,6 +110,15 @@ export async function activate(ctx: vscode.ExtensionContext) {
 
   Logger.info(`${Globals.EXTENSION_NAME} activated!`);
   return createCodeTelescopeAPI();
+}
+
+/** Location finders query the language server first and only open the panel for several results. */
+async function openLocationsOrList(providerType: FuzzyProviderType): Promise<void> {
+  const finder = FuzzyFinderAdapterRegistry.instance.getAdapter<LspLocationsFinder>(providerType);
+  // setupProvider reports a missing provider to the user
+  if (!finder) return FuzzyFinderPanelController.setupProvider(providerType);
+
+  await finder.openOrList();
 }
 
 function updateActiveTheme(forcePreviewRefresh = false): void {

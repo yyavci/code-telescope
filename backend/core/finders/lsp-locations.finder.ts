@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { IFuzzyFinderProvider } from "../../../shared/abstractions/fuzzy-finder.provider";
 import { ReferenceFinderData, ReferenceInfo } from "../../../shared/exchange/lsp-refs";
 import { TextPreviewData } from "../../../shared/extension-webview-protocol";
 import { ChunkableProvider } from "../abstractions/chunkable-provider";
@@ -6,6 +7,9 @@ import { FileReader } from "../common/file-reader";
 import { PreContextManager } from "../common/pre-context";
 import { FuzzyFinderProvider } from "../decorators/fuzzy-finder-provider.decorator";
 import { FuzzyFinderPanelController } from "../presentation/fuzzy-panel.controller";
+
+const NO_ACTIVE_EDITOR_MESSAGE = "Focus an editor to find locations of the symbol at cursor.";
+const LANGUAGE_SERVER_PROGRESS_TITLE = "Code Telescope: waiting for the language server";
 
 /** Location commands VS Code exposes for the symbol at a position. */
 export type LspLocationCommand =
@@ -24,35 +28,76 @@ export abstract class LspLocationsFinder implements FuzzyFinderProvider, Chunkab
   protected abstract readonly codicon: string;
   /** Shown when the language server returns nothing, e.g. "No references found". */
   protected abstract readonly emptyMessage: string;
-  /** Opens a single result directly instead of listing it. */
-  protected readonly jumpToSingleResult: boolean = false;
 
   private cachedRefs: ReferenceInfo[] | null = null;
+  /** Results fetched by `openOrList` before the panel opened, consumed by the panel's first query. */
+  private prefetched: { refs: ReferenceInfo[]; document: vscode.TextDocument; position: vscode.Position } | null = null;
   chunkSize = 2500;
 
   async onPanelClose(): Promise<void> {
     this.cachedRefs = null;
+    this.prefetched = null;
   }
 
   async querySelectableOptions(): Promise<ReferenceInfo[]> {
-    const panel = FuzzyFinderPanelController.instance;
-    this.cachedRefs = await this.getLocations();
+    const prefetched = this.prefetched;
+    this.prefetched = null;
+    // The panel may open later without openOrList (builtin list, resume), so results for another cursor must not leak in
+    const ctx = PreContextManager.instance.getContext();
+    const isPrefetchedCurrent =
+      prefetched && ctx && LspLocationsFinder.isSameCursor(prefetched.document, prefetched.position, ctx);
+    this.cachedRefs = isPrefetchedCurrent ? prefetched.refs : await this.getLocations();
+    return this.cachedRefs;
+  }
 
-    if (this.jumpToSingleResult && this.cachedRefs.length === 1) {
-      const [location] = this.cachedRefs;
-      this.cachedRefs = null;
-      // The user may have closed the panel or opened another finder in it while the server answered
-      const isPanelStillOurs =
-        panel && FuzzyFinderPanelController.instance === panel && (panel.provider as unknown) === this;
-      if (!isPanelStillOurs) return [];
-
-      // The panel is already open while the language server answers, so close it before jumping
-      panel.dispose();
-      await this.openLocation(location);
-      return [];
+  /**
+   * Asks the language server before opening the panel: a single result is opened directly and the panel
+   * only shows up for several, so it never flashes open and closed.
+   */
+  async openOrList(): Promise<void> {
+    // Without a focused editor the captured context is from an earlier position, so do not query it
+    if (!vscode.window.activeTextEditor) {
+      vscode.window.showWarningMessage(NO_ACTIVE_EDITOR_MESSAGE);
+      return;
     }
 
-    return this.cachedRefs;
+    PreContextManager.instance.captureFromActiveEditor();
+    const ctx = PreContextManager.instance.getContext();
+    const panelBeforeQuery = FuzzyFinderPanelController.instance;
+
+    const refs = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Window, title: LANGUAGE_SERVER_PROGRESS_TITLE },
+      () => this.getLocations(),
+    );
+
+    // getLocations already told the user why nothing was found
+    if (!ctx || refs.length === 0) return;
+
+    // Like VS Code's own Go to Definition, give up when the user moved on while the server answered
+    const activeEditor = vscode.window.activeTextEditor;
+    const userMovedOn =
+      FuzzyFinderPanelController.instance !== panelBeforeQuery ||
+      !activeEditor ||
+      !LspLocationsFinder.isSameCursor(activeEditor.document, activeEditor.selection.active, ctx);
+    if (userMovedOn) return;
+
+    if (refs.length === 1) {
+      await this.openLocation(refs[0]);
+      return;
+    }
+
+    this.prefetched = { refs, document: ctx.document, position: ctx.position };
+    await FuzzyFinderPanelController.setupProvider((this as unknown as IFuzzyFinderProvider).fuzzyAdapterType);
+  }
+
+  private static isSameCursor(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    ctx: { document: vscode.TextDocument; position: vscode.Position },
+  ): boolean {
+    return (
+      document === ctx.document && position.line === ctx.position.line && position.character === ctx.position.character
+    );
   }
 
   mapChunk(items: ReferenceInfo[]): ReferenceFinderData {
